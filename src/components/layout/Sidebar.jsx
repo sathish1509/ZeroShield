@@ -9,7 +9,7 @@ import {
   BarChart3,
   Zap,
   Settings,
-  Key,
+  ShieldCheck,
   RotateCcw,
   Lock,
   HelpCircle
@@ -20,7 +20,7 @@ export const Sidebar = () => {
   const { currentPage, setCurrentPage, isSimulating, stopSimulation, checkPageAccess } = useSecurity();
 
   const navItems = [
-    { id: 'dashboard', label: 'VAULT', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
     { id: 'traffic', label: 'LIVE TRAFFIC', icon: Activity },
     { id: 'topology', label: 'SERVICE MESH', icon: Network },
     { id: 'threats', label: 'THREAT DETECTION', icon: ShieldAlert },
@@ -34,14 +34,17 @@ export const Sidebar = () => {
   return (
     <aside className="w-64 border-r border-slate-200 bg-slate-50 flex flex-col justify-between p-4 shrink-0 hidden md:flex">
       <div className="space-y-4">
-        {/* Identity Verified Badge Card */}
-        <div className="p-3 rounded-2xl bg-white border border-slate-200 flex items-center gap-3 shadow-xs">
-          <div className="p-2 rounded-xl bg-slate-900 text-white">
-            <Key className="w-4 h-4" />
+        {/* Zero-Trust Active Gateway Badge Card */}
+        <div className="p-3 rounded-2xl bg-white border border-slate-200 flex items-center gap-3 shadow-2xs">
+          <div className="p-2 rounded-xl bg-slate-900 text-emerald-400">
+            <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-extrabold text-xs font-mono tracking-wide text-slate-900 uppercase">ZEROSHIELD VAULT</h3>
-            <p className="text-[10px] text-emerald-600 font-bold font-mono">Identity Verified</p>
+            <h3 className="font-extrabold text-xs font-sans tracking-tight text-slate-900 uppercase">ZEROSHIELD PROXY</h3>
+            <p className="text-[10px] text-emerald-600 font-bold font-mono flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Mesh Active (mTLS 1.3)
+            </p>
           </div>
         </div>
 
@@ -126,7 +129,7 @@ export const Sidebar = () => {
         </div>
 
         <div className="text-[9px] font-mono text-slate-400 border-t border-slate-200 pt-2 flex justify-between">
-          <span>ZT-LEDGER-V4.02</span>
+          <span>ZT-PROXY-V3.4</span>
           <span>SHARD-AP-SOUTH-1</span>
         </div>
       </div>
