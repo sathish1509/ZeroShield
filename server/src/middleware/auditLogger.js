@@ -6,8 +6,13 @@ export const autoAuditLog = (req, res, next) => {
       const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
       if (req.auditContext || isWriteMethod) {
         try {
-          const action = req.auditContext?.action || `${req.method}_${(req.baseUrl || req.path).split('/').filter(Boolean).pop() || 'RESOURCE'}`.toUpperCase();
-          const resource = req.auditContext?.resource || (req.baseUrl || req.path).split('/').filter(Boolean).pop() || 'resource';
+          const rawPath = (req.originalUrl || req.path).split('?')[0];
+          const pathSegments = rawPath.split('/').filter(Boolean).filter((s) => s !== 'api');
+          const primaryResource = pathSegments[0] || 'resource';
+          const subAction = pathSegments[pathSegments.length - 1] || 'action';
+
+          const action = req.auditContext?.action || `${req.method}_${subAction}`.toUpperCase();
+          const resource = req.auditContext?.resource || primaryResource;
           const resourceId = req.auditContext?.resourceId || req.params?.id || null;
 
           let details = req.auditContext?.details;

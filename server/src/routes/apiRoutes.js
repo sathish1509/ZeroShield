@@ -4,9 +4,11 @@ import { authorize } from '../middleware/authorize.js';
 import { autoAuditLog } from '../middleware/auditLogger.js';
 
 import {
+  exportAuditLogs,
   getAnalytics,
   getAuditLogs,
   getDashboard,
+  getDashboardLanding,
   getSettings,
   getTopology,
 } from '../controllers/systemController.js';
@@ -40,7 +42,20 @@ import {
 
 import { createTrafficLog, getTraffic } from '../controllers/trafficController.js';
 import { createThreat, getThreats, updateThreatStatus } from '../controllers/threatController.js';
-import { executeSimulation, getSimulation } from '../controllers/simulationController.js';
+import {
+  executeSimulation,
+  getSimulationRunDetails,
+  getSimulationRuns,
+  getSimulationScenarios,
+  runSimulation,
+  stopSimulation,
+} from '../controllers/simulationController.js';
+import {
+  getAuditSummaryHandler,
+  getServiceHealthHandler,
+  getThreatSummaryHandler,
+  getTrafficSummaryHandler,
+} from '../controllers/analyticsController.js';
 
 const router = Router();
 
@@ -87,15 +102,26 @@ router.post('/threats', authenticate, authorize('threats', 'manage'), autoAuditL
 router.put('/threats/:id/status', authenticate, authorize('threats', 'update'), autoAuditLog, updateThreatStatus);
 
 // SOC Attack War-Room Simulator
-router.get('/simulation', authenticate, authorize('simulation', 'view'), getSimulation);
+router.get('/simulation', authenticate, authorize('simulation', 'view'), getSimulationScenarios);
+router.get('/simulation/scenarios', authenticate, authorize('simulation', 'view'), getSimulationScenarios);
+router.post('/simulation/run', authenticate, authorize('simulation', 'manage'), autoAuditLog, runSimulation);
 router.post('/simulation/execute', authenticate, authorize('simulation', 'manage'), autoAuditLog, executeSimulation);
+router.post('/simulation/runs/:id/stop', authenticate, authorize('simulation', 'manage'), autoAuditLog, stopSimulation);
+router.get('/simulation/runs', authenticate, authorize('simulation', 'manage'), getSimulationRuns);
+router.get('/simulation/runs/:id', authenticate, authorize('simulation', 'manage'), getSimulationRunDetails);
 
-// Audit Logs
+// Audit Logs & Export
 router.get('/audit', authenticate, authorize('audit', 'view'), getAuditLogs);
+router.get('/audit/export', authenticate, authorize('audit', 'view'), exportAuditLogs);
 
-// System Metrics & Analytics
+// System Metrics & Analytics Aggregation
 router.get('/dashboard', authenticate, authorize('dashboard', 'view'), getDashboard);
+router.get('/dashboard/summary', authenticate, authorize('dashboard', 'view'), getDashboardLanding);
 router.get('/analytics', authenticate, authorize('analytics', 'view'), getAnalytics);
+router.get('/analytics/traffic-summary', authenticate, authorize('analytics', 'view'), getTrafficSummaryHandler);
+router.get('/analytics/threat-summary', authenticate, authorize('analytics', 'view'), getThreatSummaryHandler);
+router.get('/analytics/service-health', authenticate, authorize('analytics', 'view'), getServiceHealthHandler);
+router.get('/analytics/audit-summary', authenticate, authorize('analytics', 'view'), getAuditSummaryHandler);
 router.get('/settings', authenticate, authorize('settings', 'view'), getSettings);
 
 export default router;

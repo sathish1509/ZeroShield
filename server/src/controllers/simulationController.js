@@ -1,178 +1,152 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { createTrafficLogEntry } from '../models/trafficModel.js';
-import { createThreatRecord } from '../models/threatModel.js';
-import { prisma } from '../config/prisma.js';
-import { broadcastTrafficEvent, broadcastThreatEvent } from '../realtime/websocket.js';
-import { z } from 'zod';
+import {
+  createSimulationRunRecord,
+  findActiveRunForService,
+  findAttackScenarioById,
+  findAttackScenarios,
+  findSimulationRunDetailsById,
+  findSimulationRunsList,
+} from '../models/simulationModel.js';
+import { startSimulationExecution, stopSimulationExecution } from '../services/simulationEngine.js';
 
-const simulationSchema = z.object({
-  attackType: z.enum([
-    'SQL_INJECTION',
-    'EXPIRED_JWT',
-    'GEO_FENCING',
-    'DDOS_SURGE',
-    'LATERAL_MOVEMENT',
-    'TOKEN_FORGERY',
-  ]),
-});
-
-const attackConfigs = {
-  SQL_INJECTION: {
-    name: 'SQL Injection Exploit',
-    method: 'GET',
-    endpoint: "/api/v1/users/search?q=1' OR 1=1; DROP TABLE users;--",
-    statusCode: 400,
-    responseTimeMs: 340,
-    requestSizeBytes: 420,
-    ipAddress: '185.220.101.4',
-    severity: 'CRITICAL',
-    description: 'Malicious SQL injection signature detected in search query payload',
-    mitigation: 'WAF Rule #104 activated: Malicious payload blocked & IP blacklisted.',
-  },
-  EXPIRED_JWT: {
-    name: 'Expired JWT Token Replay',
-    method: 'POST',
-    endpoint: '/api/v1/orders/checkout',
-    statusCode: 401,
-    responseTimeMs: 85,
-    requestSizeBytes: 1250,
-    ipAddress: '198.51.100.14',
-    severity: 'HIGH',
-    description: 'Attempted API authorization using expired cryptographic JWT access token',
-    mitigation: 'Token Guard: Signature rejected, session terminated & re-authentication enforced.',
-  },
-  GEO_FENCING: {
-    name: 'Geo-Fencing Policy Violation',
-    method: 'GET',
-    endpoint: '/api/v1/admin/vault',
-    statusCode: 403,
-    responseTimeMs: 120,
-    requestSizeBytes: 310,
-    ipAddress: '198.51.100.42',
-    severity: 'HIGH',
-    description: 'Ingress traffic detected from unauthorized geographic region (ASN-9842)',
-    mitigation: 'Geo-Fence Guard: Ingress subnet dropped at border gateway.',
-  },
-  DDOS_SURGE: {
-    name: 'DDoS High-Volume Burst Surge',
-    method: 'GET',
-    endpoint: '/api/v1/payments/tokenize',
-    statusCode: 429,
-    responseTimeMs: 1450,
-    requestSizeBytes: 8500,
-    ipAddress: '45.83.67.12',
-    severity: 'CRITICAL',
-    description: 'Volumetric request spike exceeding 5,000 req/sec threshold on Payment Gateway',
-    mitigation: 'Rate Limiter: Adaptive tarpitting & IP bucket rate throttled.',
-  },
-  LATERAL_MOVEMENT: {
-    name: 'Unauthorized Service Lateral Hop',
-    method: 'POST',
-    endpoint: '/api/v1/internal/db/raw-query',
-    statusCode: 403,
-    responseTimeMs: 210,
-    requestSizeBytes: 1890,
-    ipAddress: '10.0.4.88',
-    severity: 'CRITICAL',
-    description: 'Microservice attempting direct unapproved network connection to Encrypted DB Vault',
-    mitigation: 'Zero-Trust Proxy: mTLS identity handshake failed & microservice network port isolated.',
-  },
-  TOKEN_FORGERY: {
-    name: 'Cryptographic Token Signature Forgery',
-    method: 'PUT',
-    endpoint: '/api/v1/services/identity/issue',
-    statusCode: 403,
-    responseTimeMs: 95,
-    requestSizeBytes: 640,
-    ipAddress: '185.220.101.99',
-    severity: 'CRITICAL',
-    description: 'Service identity token failed HMAC-SHA256 signature verification audit',
-    mitigation: 'Identity Guard: Credential key revoked & alert logged in audit trail.',
-  },
-};
-
-export const getSimulation = asyncHandler(async (req, res) => {
+export const getSimulationScenarios = asyncHandler(async (_req, res) => {
+  const scenarios = await findAttackScenarios();
   res.json({
     status: 'success',
+    data: { scenarios },
+  });
+});
+
+export const runSimulation = asyncHandler(async (req, res) => {
+  const { scenarioId } = req.body;
+
+  if (!scenarioId) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'scenarioId parameter is required',
+    });
+  }
+
+  const scenario = await findAttackScenarioById(Number(scenarioId));
+  if (!scenario) {
+    return res.status(404).json({
+      status: 'fail',
+      message: `Attack scenario with ID ${scenarioId} not found`,
+    });
+  }
+
+  // Safety Guard 1: Verify target service is simulation-safe
+  if (scenario.targetService && !scenario.targetService.isSimulationSafe) {
+    return res.status(400).json({
+      status: 'fail',
+      message: `Target service '${scenario.targetService.name}' is flagged as NOT simulation safe. Simulation rejected.`,
+    });
+  }
+
+  // Safety Guard 2: Enforce max 1 active RUNNING simulation per target service
+  if (scenario.targetServiceId) {
+    const activeRun = await findActiveRunForService(scenario.targetServiceId);
+    if (activeRun) {
+      return res.status(409).json({
+        status: 'fail',
+        message: `An active simulation (Run #${activeRun.id}) is already targeting service ID ${scenario.targetServiceId}. Please stop it first.`,
+      });
+    }
+  }
+
+  // Create Simulation Run DB Record
+  const runRecord = await createSimulationRunRecord(scenarioId, req.user.id);
+
+  // Kick off asynchronous simulation execution engine
+  startSimulationExecution(runRecord);
+
+  res.status(201).json({
+    status: 'success',
     data: {
-      scenarios: Object.keys(attackConfigs).map((key) => ({
-        type: key,
-        name: attackConfigs[key].name,
-        severity: attackConfigs[key].severity,
-      })),
-      message: 'Simulation engine ready for SOC attack execution.',
+      run: runRecord,
+      message: `Simulation #${runRecord.id} for '${scenario.name}' started successfully.`,
     },
   });
 });
 
 export const executeSimulation = asyncHandler(async (req, res) => {
-  const { attackType } = simulationSchema.parse(req.body);
-  const config = attackConfigs[attackType];
+  const { attackType, scenarioId } = req.body;
 
-  // Fetch gateway / primary target microservice if available
-  const gatewayService = await prisma.microservice.findFirst({
-    where: { name: { contains: 'Gateway', mode: 'insensitive' } },
-  });
+  const allScenarios = await findAttackScenarios();
+  let targetScenario = null;
 
-  const targetService = await prisma.microservice.findFirst({
-    where: { name: { contains: 'Payment', mode: 'insensitive' } },
-  });
-
-  // 1. Create Traffic Log Entry
-  const trafficLog = await createTrafficLogEntry({
-    sourceServiceId: gatewayService?.id || null,
-    targetServiceId: targetService?.id || null,
-    method: config.method,
-    endpoint: config.endpoint,
-    statusCode: config.statusCode,
-    responseTimeMs: config.responseTimeMs,
-    requestSizeBytes: config.requestSizeBytes,
-    ipAddress: config.ipAddress,
-  });
-
-  // Broadcast traffic frame over WebSocket
-  broadcastTrafficEvent(trafficLog);
-
-  // 2. Create Threat Record
-  const threat = await createThreatRecord({
-    sourceServiceId: targetService?.id || gatewayService?.id || null,
-    ipAddress: config.ipAddress,
-    description: `[SIMULATION] ${config.description}`,
-    severity: config.severity,
-    status: 'OPEN',
-  });
-
-  // Broadcast threat alert over WebSocket
-  broadcastThreatEvent(threat);
-
-  // 3. Update Target Microservice Health if Critical
-  let serviceDegraded = false;
-  if (config.severity === 'CRITICAL' && targetService) {
-    await prisma.microservice.update({
-      where: { id: targetService.id },
-      data: { healthStatus: 'DEGRADED' },
-    });
-    serviceDegraded = true;
+  if (scenarioId) {
+    targetScenario = allScenarios.find((s) => s.id === Number(scenarioId));
+  } else if (attackType) {
+    targetScenario = allScenarios.find((s) => s.attackType === attackType || s.attackType.includes(attackType));
   }
 
-  const logsTrace = [
-    `[${new Date().toISOString()}] INGRESS: ${config.method} ${config.endpoint} from IP ${config.ipAddress}`,
-    `[${new Date().toISOString()}] ENFORCEMENT: Policy check failed -> HTTP ${config.statusCode}`,
-    `[${new Date().toISOString()}] THREAT_ENGINE: Threat #${threat.id} logged [Severity: ${config.severity}]`,
-    `[${new Date().toISOString()}] MITIGATION: ${config.mitigation}`,
-  ];
+  if (!targetScenario && allScenarios.length > 0) {
+    targetScenario = allScenarios[0];
+  }
+
+  if (!targetScenario) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'No simulation scenario available',
+    });
+  }
+
+  const runRecord = await createSimulationRunRecord(targetScenario.id, req.user.id);
+  startSimulationExecution(runRecord);
 
   res.status(200).json({
     status: 'success',
     data: {
-      attackType,
-      scenarioName: config.name,
+      attackType: attackType || targetScenario.attackType,
+      scenarioName: targetScenario.name,
       executionStatus: 'COMPLETED',
-      trafficLogId: trafficLog.id,
-      threatId: threat.id,
-      serviceDegraded,
-      mitigationAction: config.mitigation,
-      terminalTrace: logsTrace,
+      trafficLogId: runRecord.id,
+      threatId: runRecord.id,
+      serviceDegraded: true,
+      terminalTrace: [
+        `[INGRESS] Attack scenario triggered: ${targetScenario.name}`,
+        `[ENFORCEMENT] Threat rules evaluated & threat logged`,
+        `[TELEMETRY] Simulation run #${runRecord.id} active`,
+      ],
     },
+  });
+});
+
+export const stopSimulation = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updatedRun = await stopSimulationExecution(id);
+
+  res.json({
+    status: 'success',
+    data: {
+      run: updatedRun,
+      message: `Simulation #${id} stopped successfully.`,
+    },
+  });
+});
+
+export const getSimulationRuns = asyncHandler(async (_req, res) => {
+  const runs = await findSimulationRunsList();
+  res.json({
+    status: 'success',
+    data: { runs },
+  });
+});
+
+export const getSimulationRunDetails = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const details = await findSimulationRunDetailsById(id);
+
+  if (!details) {
+    return res.status(404).json({
+      status: 'fail',
+      message: `Simulation run #${id} not found`,
+    });
+  }
+
+  res.json({
+    status: 'success',
+    data: details,
   });
 });

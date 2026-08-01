@@ -228,6 +228,111 @@ npm run test:phase3
 
 ---
 
+## 💥 Phase 4 Backend: Real-Time Threat Engine, Traffic Ingestion & Attack Simulator
+
+Phase 4 introduces live microservice request ingestion (`POST /api/traffic`), automated threat detection & RBAC threat resolution (`/api/threats`), an interactive SOC attack war-room simulator executing 6 attack vectors (`POST /api/simulation/execute`), and WebSocket event broadcasting (`ws://localhost:4000/ws`).
+
+### Phase 4 Endpoints Summary
+
+| Endpoint | HTTP Method | Allowed Roles | Description |
+|----------|-------------|---------------|-------------|
+| `/api/traffic` | `GET` | Admin, Analyst, DevOps | List paginated traffic log frames |
+| `/api/traffic` | `POST` | Admin, Analyst, DevOps | Ingest microservice traffic frame & broadcast WS |
+| `/api/threats` | `GET` | Admin, Analyst, DevOps | Search & inspect active/historical security threats |
+| `/api/threats` | `POST` | Admin, Analyst | Register security threat & broadcast WS alert |
+| `/api/threats/:id/status` | `PUT` | Admin, Analyst | Update threat status (`INVESTIGATING`, `RESOLVED`, `FALSE_POSITIVE`) (Audit Logged) |
+| `/api/simulation` | `GET` | Admin, Analyst | List available attack war-room scenarios |
+| `/api/simulation/execute` | `POST` | Admin, Analyst | Execute SOC attack simulation vector (Audit Logged) |
+
+### Run Phase 4 Automated Tests
+
+```bash
+# Run Phase 4 backend verification test suite
+npm run backend:test-phase4
+```
+
+---
+
+## 📊 Phase 5 Backend: Refined Audit Log Search/Export & Analytics Aggregation
+
+Phase 5 delivers high-performance SQL database analytics aggregations, structured/full-text audit search, role-aware audit log CSV/JSON exports, per-service health metrics, and a single-roundtrip landing dashboard endpoint.
+
+### Key Capabilities
+
+1. **Refined Audit Search & Role-Aware Export**:
+   - `GET /api/audit/export`: Accepts `format=csv` or `format=json`.
+   - **Admin / Analyst**: Full raw log export including timestamps, user credentials, resource IDs, IP addresses, and JSON payloads.
+   - **DevOps**: Summary-only export (aggregated counts by action/resource category; raw log details and user emails omitted per role matrix).
+2. **Database Aggregation Endpoints**:
+   - `GET /api/analytics/traffic-summary`: Request volume time-series (SQL date_trunc), status code distributions (`2xx`, `3xx`, `4xx`, `5xx`), and service request volumes. Supports `range` (`24h`, `7d`, `30d`) & `serviceId`.
+   - `GET /api/analytics/threat-summary`: Threat counts by severity, status, and trend over time.
+   - `GET /api/analytics/service-health`: Per-service uptime %, error rate %, average response time ms, and total requests.
+   - `GET /api/analytics/audit-summary`: Privileged action counts grouped by user, role, and action type.
+3. **Landing Dashboard Endpoint**:
+   - `GET /api/dashboard/summary`: Single payload returning service health counts, open threats, today's request volume, active policies, recent audit events, and mini 24h traffic trend.
+
+### Phase 5 Endpoints Summary
+
+| Endpoint | HTTP Method | Allowed Roles | Query Params | Description |
+|----------|-------------|---------------|--------------|-------------|
+| `/api/audit/export` | `GET` | Admin, Analyst, DevOps | `format=csv\|json`, `query`, `resource`, `action` | Role-aware CSV/JSON audit export |
+| `/api/dashboard/summary` | `GET` | Admin, Analyst, DevOps | N/A | Landing dashboard top-line KPIs & mini trend |
+| `/api/analytics/traffic-summary` | `GET` | Admin, Analyst, DevOps | `range=24h\|7d\|30d`, `serviceId` | Bucketed traffic volume & status code distribution |
+| `/api/analytics/threat-summary` | `GET` | Admin, Analyst, DevOps | `range=24h\|7d\|30d` | Threat count breakdown & time-series trend |
+| `/api/analytics/service-health` | `GET` | Admin, Analyst, DevOps | `range=24h\|7d\|30d` | Per-microservice uptime %, latency, & error rates |
+| `/api/analytics/audit-summary` | `GET` | Admin, Analyst, DevOps | `range=24h\|7d\|30d` | Privileged audit activity counts by user/role/action |
+
+### Run Phase 5 Automated Tests
+
+```bash
+# Run Phase 5 backend verification test suite
+npm run backend:test-phase5
+```
+
+---
+
+## 🎯 Phase 6 Backend: SOC Attack War-Room Simulation Engine & Latency Telemetry
+
+Phase 6 introduces a database-backed SOC Attack War-Room Simulation Engine (`AttackScenario`, `SimulationRun`), generating synthetic traffic through the real ingestion pipeline, triggering real threat rules, measuring detection latency in milliseconds, streaming live events over WebSockets, and providing run analytics.
+
+### Key Capabilities
+
+1. **Predefined Attack Scenarios**:
+   - `DDOS_BURST`: High-volume distributed request surge targeting Payment Gateway.
+   - `CREDENTIAL_STUFFING`: Password spray botnet login attempts.
+   - `SQL_INJECTION_ATTEMPT`: Malicious `UNION SELECT` query pattern probing.
+   - `LATERAL_MOVEMENT`: Unauthorized internal service hop to Core DB enclave.
+   - `DATA_EXFILTRATION`: Bulk PII download extraction anomaly.
+2. **Real Pipeline Threat Tagging & Detection Latency**:
+   - Synthetic traffic is tagged with `simulationRunId` and ingested into `traffic_logs`.
+   - Threat rules trigger real `Threat` records tagged with `simulationRunId`.
+   - Measures exact **detection latency** (`detectedAt - injectedTimestamp` in ms).
+3. **Live WebSocket Streaming**:
+   - Emits real-time `SIMULATION_STARTED`, `SIMULATION_STEP`, `THREAT_DETECTED`, `SIMULATION_COMPLETED`, and `SIMULATION_STOPPED` payloads.
+4. **Safety & Audit Guards**:
+   - Verifies `isSimulationSafe` flag on target microservices.
+   - Enforces max 1 active simulation run per target service.
+   - Audit logs start and stop operations (`autoAuditLog`).
+
+### Phase 6 Endpoints Summary
+
+| Endpoint | HTTP Method | Allowed Roles | Description |
+|----------|-------------|---------------|-------------|
+| `/api/simulation/scenarios` | `GET` | Admin, Analyst | List predefined attack scenarios |
+| `/api/simulation/run` | `POST` | Admin | Start simulation execution run (Audit Logged) |
+| `/api/simulation/runs/:id/stop` | `POST` | Admin | Halt active simulation run (Audit Logged) |
+| `/api/simulation/runs` | `GET` | Admin | List past & active simulation runs |
+| `/api/simulation/runs/:id` | `GET` | Admin | Detailed run timeline & detection latency metrics |
+
+### Run Phase 6 Automated Tests
+
+```bash
+# Run Phase 6 backend verification test suite
+npm run backend:test-phase6
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```

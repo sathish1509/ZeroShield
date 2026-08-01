@@ -8,6 +8,8 @@ import {
   ConnectionStatus,
   ThreatRuleType,
   ThreatSeverity,
+  AttackType,
+  SimulationIntensity,
 } from '@prisma/client';
 import { hashPassword } from '../src/utils/password.js';
 
@@ -51,6 +53,7 @@ const permissions = {
     ['analytics', 'view'],
     ['policies', 'view'],
     ['services', 'view'],
+    ['simulation', 'view'],
   ],
   DEVOPS: [
     ['dashboard', 'view'], ['dashboard', 'manage'],
@@ -154,6 +157,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['gateway', 'dmz', 'ingress'],
+    isSimulationSafe: true,
   },
   {
     name: 'Zero Trust Proxy Engine',
@@ -162,6 +166,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['proxy', 'control-plane', 'zero-trust'],
+    isSimulationSafe: true,
   },
   {
     name: 'Order Processing Service',
@@ -170,6 +175,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['mesh', 'business-logic', 'orders'],
+    isSimulationSafe: true,
   },
   {
     name: 'Payment Gateway Service',
@@ -178,6 +184,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['pci-dss', 'payments', 'secure-enclave'],
+    isSimulationSafe: true,
   },
   {
     name: 'Inventory & Stock Service',
@@ -186,6 +193,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['mesh', 'inventory', 'stock'],
+    isSimulationSafe: true,
   },
   {
     name: 'Notification & SMS Engine',
@@ -194,6 +202,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['mesh', 'notifications', 'async'],
+    isSimulationSafe: true,
   },
   {
     name: 'Encrypted Core DB Cluster',
@@ -202,6 +211,7 @@ const initialServices = [
     status: ServiceStatus.ACTIVE,
     healthStatus: HealthStatus.HEALTHY,
     tags: ['database', 'vault', 'encrypted'],
+    isSimulationSafe: true,
   },
 ];
 
@@ -306,6 +316,7 @@ async function main() {
           status: s.status,
           healthStatus: s.healthStatus,
           tags: s.tags,
+          isSimulationSafe: s.isSimulationSafe,
         },
         create: {
           name: s.name,
@@ -315,6 +326,7 @@ async function main() {
           status: s.status,
           healthStatus: s.healthStatus,
           tags: s.tags,
+          isSimulationSafe: s.isSimulationSafe,
         },
       });
       serviceMap.set(s.name, row);
@@ -358,9 +370,72 @@ async function main() {
         });
       }
     }
+
+    // Seed Attack Scenarios
+    const paymentService = serviceMap.get('Payment Gateway Service');
+    const authService = serviceMap.get('Edge API Gateway');
+
+    const initialScenarios = [
+      {
+        name: 'Distributed High-Volume DDoS Burst',
+        description: 'Simulates a massive distributed denial of service request surge targeting Payment Gateway',
+        attackType: AttackType.DDOS_BURST,
+        targetServiceId: paymentService?.id || null,
+        intensity: SimulationIntensity.HIGH,
+        durationSeconds: 15,
+        config: { requestsPerSecond: 25, sourceIpPoolSize: 20, endpoint: '/api/v1/payments/tokenize' },
+      },
+      {
+        name: 'Credential Stuffing Botnet Attack',
+        description: 'High-frequency automated login verification attempt using stolen password dumps',
+        attackType: AttackType.CREDENTIAL_STUFFING,
+        targetServiceId: authService?.id || null,
+        intensity: SimulationIntensity.HIGH,
+        durationSeconds: 12,
+        config: { requestsPerSecond: 15, sourceIpPoolSize: 10, endpoint: '/api/v1/auth/login' },
+      },
+      {
+        name: 'WAF SQL Injection Exploit Probe',
+        description: 'Targeted database query injection attempts searching for vulnerable ORM endpoints',
+        attackType: AttackType.SQL_INJECTION_ATTEMPT,
+        targetServiceId: authService?.id || null,
+        intensity: SimulationIntensity.MEDIUM,
+        durationSeconds: 10,
+        config: { requestsPerSecond: 8, sourceIpPoolSize: 5, endpoint: '/api/v1/users/search' },
+      },
+      {
+        name: 'Unapproved Lateral Movement Hop',
+        description: 'Compromised microservice attempting unauthorized internal network access to Encrypted DB Vault',
+        attackType: AttackType.LATERAL_MOVEMENT,
+        targetServiceId: paymentService?.id || null,
+        intensity: SimulationIntensity.MEDIUM,
+        durationSeconds: 10,
+        config: { requestsPerSecond: 5, sourceIpPoolSize: 3, endpoint: '/api/v1/internal/db/raw-query' },
+      },
+      {
+        name: 'High-Volume Data Exfiltration Probe',
+        description: 'Suspicious large payload extraction attempt originating from sensitive internal API endpoints',
+        attackType: AttackType.DATA_EXFILTRATION,
+        targetServiceId: paymentService?.id || null,
+        intensity: SimulationIntensity.HIGH,
+        durationSeconds: 15,
+        config: { requestsPerSecond: 10, sourceIpPoolSize: 4, endpoint: '/api/v1/user/export-pii' },
+      },
+    ];
+
+    for (const sc of initialScenarios) {
+      const existing = await prisma.attackScenario.findFirst({
+        where: { name: sc.name },
+      });
+      if (!existing) {
+        await prisma.attackScenario.create({
+          data: sc,
+        });
+      }
+    }
   }
 
-  console.log('Seed complete: roles, permissions, demo users, policies, threat rules, microservices, and mesh topology ready.');
+  console.log('Seed complete: roles, permissions, demo users, policies, threat rules, microservices, topology, and attack scenarios ready.');
 }
 
 main()

@@ -65,6 +65,28 @@ enum ThreatStatus {
   FALSE_POSITIVE
 }
 
+enum AttackType {
+  BRUTE_FORCE
+  DDOS_BURST
+  CREDENTIAL_STUFFING
+  SQL_INJECTION_ATTEMPT
+  LATERAL_MOVEMENT
+  DATA_EXFILTRATION
+}
+
+enum SimulationIntensity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SimulationRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  STOPPED
+}
+
 model User {
   id              Int              @id @default(autoincrement())
   name            String
@@ -78,6 +100,7 @@ model User {
   auditLogs       AuditLog[]
   microservices   Microservice[]
   resolvedThreats Threat[]         @relation("ThreatResolver")
+  simulationRuns  SimulationRun[]  @relation("SimulationTriggerer")
 
   @@map("users")
 }
@@ -145,21 +168,23 @@ model AuditLog {
 
   @@index([userId])
   @@index([resource])
+  @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
 }
 
 model Microservice {
-  id           Int           @id @default(autoincrement())
-  name         String        @unique
-  description  String?
-  ownerId      Int           @map("owner_id")
-  baseUrl      String        @map("base_url")
-  status       ServiceStatus @default(ACTIVE)
-  healthStatus HealthStatus  @default(HEALTHY) @map("health_status")
-  tags         Json          @default("[]")
-  registeredAt DateTime      @default(now()) @map("registered_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id               Int              @id @default(autoincrement())
+  name             String           @unique
+  description      String?
+  ownerId          Int              @map("owner_id")
+  baseUrl          String           @map("base_url")
+  status           ServiceStatus    @default(ACTIVE)
+  healthStatus     HealthStatus     @default(HEALTHY) @map("health_status")
+  isSimulationSafe Boolean          @default(true) @map("is_simulation_safe")
+  tags             Json             @default("[]")
+  registeredAt     DateTime         @default(now()) @map("registered_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
 
   owner               User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   identities          ServiceIdentity[]
@@ -168,6 +193,7 @@ model Microservice {
   sourceTraffic       TrafficLog[]        @relation("SourceTraffic")
   targetTraffic       TrafficLog[]        @relation("TargetTraffic")
   threats             Threat[]            @relation("ServiceThreats")
+  attackScenarios     AttackScenario[]
 
   @@index([ownerId])
   @@map("microservices")
@@ -206,6 +232,7 @@ model TrafficLog {
   id               Int      @id @default(autoincrement())
   sourceServiceId  Int?     @map("source_service_id")
   targetServiceId  Int?     @map("target_service_id")
+  simulationRunId  Int?     @map("simulation_run_id")
   method           String
   endpoint         String
   statusCode       Int      @map("status_code")
@@ -214,11 +241,13 @@ model TrafficLog {
   ipAddress        String   @map("ip_address")
   timestamp        DateTime @default(now())
 
-  sourceService Microservice? @relation("SourceTraffic", fields: [sourceServiceId], references: [id], onDelete: SetNull)
-  targetService Microservice? @relation("TargetTraffic", fields: [targetServiceId], references: [id], onDelete: SetNull)
+  sourceService Microservice?  @relation("SourceTraffic", fields: [sourceServiceId], references: [id], onDelete: SetNull)
+  targetService Microservice?  @relation("TargetTraffic", fields: [targetServiceId], references: [id], onDelete: SetNull)
+  simulationRun SimulationRun? @relation(fields: [simulationRunId], references: [id], onDelete: SetNull)
 
   @@index([sourceServiceId])
   @@index([targetServiceId])
+  @@index([simulationRunId])
   @@index([statusCode])
   @@index([ipAddress])
   @@index([timestamp])
@@ -242,6 +271,7 @@ model Threat {
   id              Int            @id @default(autoincrement())
   ruleId          Int?           @map("rule_id")
   sourceServiceId Int?           @map("source_service_id")
+  simulationRunId Int?           @map("simulation_run_id")
   ipAddress       String?        @map("ip_address")
   description     String
   severity        ThreatSeverity
@@ -250,13 +280,56 @@ model Threat {
   resolvedAt      DateTime?      @map("resolved_at")
   resolvedBy      Int?           @map("resolved_by")
 
-  rule          ThreatRule?   @relation(fields: [ruleId], references: [id], onDelete: SetNull)
-  sourceService Microservice? @relation("ServiceThreats", fields: [sourceServiceId], references: [id], onDelete: SetNull)
-  resolver      User?         @relation("ThreatResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  rule          ThreatRule?    @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  sourceService Microservice?  @relation("ServiceThreats", fields: [sourceServiceId], references: [id], onDelete: SetNull)
+  resolver      User?          @relation("ThreatResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  simulationRun SimulationRun? @relation(fields: [simulationRunId], references: [id], onDelete: SetNull)
 
   @@index([severity])
   @@index([status])
   @@index([sourceServiceId])
+  @@index([simulationRunId])
   @@index([detectedAt])
   @@map("threats")
+}
+
+model AttackScenario {
+  id              Int                 @id @default(autoincrement())
+  name            String
+  description     String?
+  attackType      AttackType          @map("attack_type")
+  targetServiceId Int?                @map("target_service_id")
+  intensity       SimulationIntensity @default(MEDIUM)
+  durationSeconds Int                 @default(30) @map("duration_seconds")
+  config          Json                @map("config")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  targetService Microservice?   @relation(fields: [targetServiceId], references: [id], onDelete: SetNull)
+  runs          SimulationRun[]
+
+  @@index([attackType])
+  @@map("attack_scenarios")
+}
+
+model SimulationRun {
+  id             Int                 @id @default(autoincrement())
+  scenarioId     Int                 @map("scenario_id")
+  triggeredBy    Int                 @map("triggered_by")
+  status         SimulationRunStatus @default(QUEUED)
+  startedAt      DateTime            @default(now()) @map("started_at")
+  endedAt        DateTime?           @map("ended_at")
+  resultsSummary Json?               @map("results_summary")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  scenario    AttackScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  triggerer   User           @relation("SimulationTriggerer", fields: [triggeredBy], references: [id], onDelete: Cascade)
+  trafficLogs TrafficLog[]
+  threats     Threat[]
+
+  @@index([scenarioId])
+  @@index([triggeredBy])
+  @@index([status])
+  @@map("simulation_runs")
 }

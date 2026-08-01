@@ -82,7 +82,6 @@ export const broadcastThreatEvent = (threatData) => {
 
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN && client.user) {
-      // Scoped detail check: DEVOPS gets concise warning summary
       let payloadData = threatData;
       if (client.user.role === 'DEVOPS') {
         payloadData = {
@@ -101,6 +100,21 @@ export const broadcastThreatEvent = (threatData) => {
           timestamp: new Date().toISOString(),
         })
       );
+    }
+  });
+};
+
+export const broadcastSimulationEvent = (eventType, simulationData) => {
+  if (!wss) return;
+  const payload = JSON.stringify({
+    type: eventType, // e.g. SIMULATION_STARTED, SIMULATION_STEP, SIMULATION_COMPLETED, SIMULATION_STOPPED
+    data: simulationData,
+    timestamp: new Date().toISOString(),
+  });
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN && client.user) {
+      client.send(payload);
     }
   });
 };
