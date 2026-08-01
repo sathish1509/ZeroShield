@@ -1,149 +1,193 @@
-# ZeroShield - Project Overview & End-to-End System Process
+# ZeroShield - End-to-End System Processes & Architectural Workflows
 
-## 🛡️ Executive Summary
-**ZeroShield** (v3.4) is an enterprise-grade **Zero-Trust Identity-Aware Microservice API Security Gateway & SOC Command Center**. Designed for modern cloud-native architectures, ZeroShield intercepts, inspects, and enforces cryptographic authorization on every internal and external API request across microservices using Mutual TLS (mTLS 1.3), AI risk-score calculation, and automated anomaly containment.
+## 🛡️ Overview
+This document details **all core processes and execution workflows** performed by **ZeroShield (v3.4)** — an enterprise-grade Zero-Trust Microservice API Security Gateway & SOC Command Center.
 
----
-
-## 🏗️ Architecture & Technology Stack
-
-| Layer | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Frontend Framework** | React 19 + Vite | High-performance single-page application (SPA) |
-| **Styling & Design System** | TailwindCSS v4 + Glassmorphism | Custom dark slate & monochrome SaaS aesthetic |
-| **Icons & UI Assets** | Lucide React | Clean, scalable vector icons |
-| **Telemetry & Visualization** | Recharts | Custom interactive Area, Bar, and Pie charts |
-| **Backend & Storage** | Supabase (PostgreSQL) + Node.js | Database persistence, mTLS audit logs, security policies |
-| **State Management** | React Context (`SecurityContext`) | Real-time global security state, simulation triggers, RBAC |
+ZeroShield operates in two primary modes:
+1. **Proactive In-Line Interception Proxy Mode (Real-Time)**: Intercepts, inspects, and enforces security decisions on live inter-service requests before they reach target microservices to prevent lateral movement.
+2. **SOC Telemetry & Log Ingestion Mode (Forensic & Analytics)**: Ingests, parses, and analyzes static or streaming security logs from servers, API gateways, and cloud storage streams.
 
 ---
 
-## 🔄 End-to-End Operating Process
+## 🔄 Index of Core System Processes
 
+1. [Process 1: Real-Time Zero-Trust Proxy Interception Workflow](#process-1-real-time-zero-trust-proxy-interception-workflow)
+2. [Process 2: Lateral Movement & Anomaly Prevention Process](#process-2-lateral-movement--anomaly-prevention-process)
+3. [Process 3: Security Log Ingestion & Remote Stream Processing](#process-3-security-log-ingestion--remote-stream-processing)
+4. [Process 4: Dynamic Policy Engine & Rule Evaluation Process](#process-4-dynamic-policy-engine--rule-evaluation-process)
+5. [Process 5: Immutable Cryptographic Audit Trail Logging](#process-5-immutable-cryptographic-audit-trail-logging)
+6. [Process 6: Telemetry Aggregation & Real-Time Analytics Process](#process-6-telemetry-aggregation--real-time-analytics-process)
+7. [Process 7: Cyber Attack Simulation & War-Room Mitigation](#process-7-cyber-attack-simulation--war-room-mitigation)
+8. [Process 8: Role-Based Access Control (RBAC) Governance Process](#process-8-role-based-access-control-rbac-governance-process)
+
+---
+
+## ⚡ Process 1: Real-Time Zero-Trust Proxy Interception Workflow
+
+### **Objective**
+Intercept every request between **Service A (Origin)** and **Service B (Destination)** at the proxy edge, enforcing cryptographic identity and policy validation inline.
+
+### **Pipeline Flow Diagram**
 ```
-                                  +------------------------------------+
-                                  |    Incoming Microservice Traffic   |
-                                  +------------------------------------+
-                                                    |
-                                                    v
-                                  +------------------------------------+
-                                  |    ZeroShield mTLS 1.3 Proxy       |
-                                  |   (Cryptographic Cert Check)       |
-                                  +------------------------------------+
-                                                    |
-                                                    v
-                                  +------------------------------------+
-                                  |      AI Threat Risk Engine         |
-                                  |  (SQLi, JWT Forgery, Rate Limits)  |
-                                  +------------------------------------+
-                                          /                  \
-                                         /                    \
-                         (Risk Score <= 70)                  (Risk Score > 70)
-                                       /                        \
-                                      v                          v
-                      +------------------------+      +------------------------+
-                      |   Traffic Passed 200   |      |   Traffic Blocked 403   |
-                      |   (Forwarded to Mesh)  |      |   (Logged & SIEM Alert) |
-                      +------------------------+      +------------------------+
-```
-
-### 1. Ingestion & Cryptographic Verification
-- Every request passing through the proxy is verified for **Mutual TLS (mTLS 1.3)** identity certificates and signed **RS256 JWT** tokens.
-- Invalid certificates or unauthenticated signatures are instantly blocked at the edge with HTTP 401/403 status codes.
-
-### 2. Real-Time Threat Inspection
-- The ZeroShield inspection engine calculates a dynamic **Risk Score (0 to 100)** for every incoming packet based on signature matching, rate limits, payload sanitization, and geographical origin.
-- Requests exceeding threat thresholds (e.g. SQL Injection attempts, DDoS floods, or Credential Stuffing) are isolated immediately.
-
-### 3. State Propagation & SOC Telemetry
-- All security decisions (Allowed vs. Blocked) are recorded in the central immutable audit ledger.
-- Real-time telemetry updates all active dashboard panels, alerts, and service mesh topology nodes without requiring page refreshes.
-
----
-
-## 💻 Module Overview
-
-### 1. Dashboard (`/`)
-- **SOC Command Center Overview**: Displays total verified requests, allowed vs. blocked metrics, proxy latency, and threat defense rates.
-- **Service Mesh Health**: Interactive topology preview showing 8 microservice nodes (Payment Gateway, Auth Engine, Order Processing, etc.).
-- **Dark Hero Card**: Live summary of `ZeroTrust Proxy Engine (PROXY ID: ZS-MESH-01)`.
-
-### 2. Live Traffic (`/traffic`)
-- **Real-Time Request Inspector**: Inspects every HTTP request with timestamps, endpoints, client IP, payload size, response code, and threat risk score.
-- **Filtering & Search**: Filter traffic by status code (200 OK vs 403 Forbidden) or search specific endpoints.
-
-### 3. Service Mesh (`/topology`)
-- **Microservice Mesh Topology**: Node graph rendering real-time connectivity between service nodes.
-- **Node Isolation Controls**: Select any service to view current load, mTLS certificate status, or trigger emergency isolation.
-
-### 4. Threat Detection (`/threats`)
-- **Security Incident Monitor**: Categorized overview of active anomalies (SQL Injection, Rate Limit Spikes, Unauthorized JWT Forgery).
-- **Incident Response**: View detailed payload traces, origin IP addresses, and automated mitigation steps.
-
-### 5. Policy Engine (`/policies`)
-- **Interactive Security Rule Manager**: Toggle or adjust security enforcement rules:
-  - Strict mTLS Certificate Enforcement
-  - Global Rate Limiting (e.g., max 100 req/sec per IP)
-  - Automatic SQL Injection & XSS Payload Sanitization
-  - Geo-Blocking for high-risk zones
-
-### 6. Audit Logs (`/audit`)
-- **Immutable Security Ledger**: Full forensic log trail of all proxy enforcement actions.
-- **Export & Search**: Search logs by Keyword, Severity Level (`CRITICAL`, `WARNING`, `INFO`), or export log datasets as CSV/JSON.
-
-### 7. Analytics (`/analytics`)
-- **Enterprise Telemetry Suite**: High-impact Recharts visual suite featuring:
-  - **Request Volume Breakdown**: AreaChart comparing Allowed vs Blocked traffic.
-  - **Overall Enforcement Ratio**: Pie Donut chart showing 97% Allowed vs 3% Blocked.
-  - **Proxy Latency Histogram**: BarChart displaying sub-15ms proxy processing times.
-  - **Top Targeted Endpoints**: Ranked table of most frequently attacked API routes.
-
-### 8. Attack Simulation War-Room (`/simulation`)
-- **Live Cyber Attack Injector**: Simulate realistic attack vectors (DDoS Flood, SQLi Injection Attack, JWT Key Hijack) in a controlled sandbox environment.
-- **Real-Time System Defense**: Watch ZeroShield proxy isolate malicious traffic and trigger live alert badges.
-- **Reset & Purge Controls**: Instantly purge threat simulations and reset SOC stats.
-
-### 9. Settings (`/settings`)
-- **System Configuration**: Manage cryptographic JWT expiration timeouts, mTLS toggles, SIEM webhook endpoints (Slack, Datadog), and audit retention horizons.
-
----
-
-## 🔐 Role-Based Access Control (RBAC)
-
-ZeroShield enforces strict multi-role authorization across all features:
-
-| Role | Dashboard & Telemetry | Live Traffic & Audit Logs | Security Policy Edits | Attack Simulation Reset | System Settings |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **SOC ADMIN** | Full Access | Full Access | Full Access | Full Access | Full Access |
-| **ANALYST** | Full Access | Full Access | View-Only | View-Only | Restricted |
-| **DEVOPS** | Full Access | View Topology & Metrics | View-Only | Restricted | Restricted |
-
----
-
-## 🚀 Getting Started & Local Development
-
-### 1. Installation
-```bash
-git clone https://github.com/sathish1509/ZeroShield.git
-cd ZeroShield
-npm install
+Service A (Origin Microservice)
+      │
+      ▼
++-------------------------------------------------------------------+
+|               ZERO-TRUST PROXY CORE ENGINE (SHARD-01)            |
+|                                                                   |
+|   ┌──────────────────────────────────────────────────────────┐    |
+|   │ 1. 🔑 JWT Validation (RS256 Signature & Expiration)      │    |
+|   └──────────────────────────┬───────────────────────────────┘    |
+|                              v                                    |
+|   ┌──────────────────────────────────────────────────────────┐    |
+|   │ 2. 🛡️ Policy Engine (Service-to-Service Scope Matrix)    │    |
+|   └──────────────────────────┬───────────────────────────────┘    |
+|                              v                                    |
+|   ┌──────────────────────────────────────────────────────────┐    |
+|   │ 3. 🧠 AI Threat Risk Engine (Payload & SQLi Scanning)    │    |
+|   └──────────────────────────┬───────────────────────────────┘    |
+|                              v                                    |
+|   ┌──────────────────────────────────────────────────────────┐    |
+|   │ 4. 📜 Immutable Audit Logger (Ledger Entry Write)       │    |
+|   └──────────────────────────┬───────────────────────────────┘    |
+|                              v                                    |
+|   ┌──────────────────────────────────────────────────────────┐    |
+|   │ 5. ⚡ Decision Enforcement (ALLOW 200 / BLOCK 403)        │    |
+|   └──────────────────────────────────────────────────────────┘    |
++-------------------------------------------------------------------+
+      │                                             │
+ (If Risk <= 70 & Valid)                   (If Scope / Risk Violation)
+      │                                             │
+      v                                             v
+Service B (Target Node)               Interception Blocked (403)
+[Safe Delivery 200 OK]                [Lateral Threat Isolated]
 ```
 
-### 2. Running Dev Server
-```bash
-npm run dev
-# App starts locally at http://localhost:5173/ or http://localhost:5174/
-```
-
-### 3. Production Build & Verification
-```bash
-npm run build
-# Compiles production assets into /dist
-```
+### **Detailed Step-by-step Execution Steps**
+1. **Request Ingestion**: Origin node (Service A) issues an HTTP/gRPC call intended for Service B.
+2. **Stage 1 - JWT Validation**: Proxy inspects `Authorization: Bearer <token>`, verifies RS256 signature against public keys, checks token expiration (`exp`), and extracts `serviceId`, `serviceName`, and `scope`.
+3. **Stage 2 - Policy Engine**: Evaluates whether Service A is authorized to call Service B based on the current service-to-service policy matrix.
+4. **Stage 3 - AI Threat Risk Engine**: Scans headers, parameters, and request body for malicious SQLi/XSS signatures and calculates a dynamic **Risk Score (0–100)**.
+5. **Stage 4 - Immutable Audit Logger**: Generates a cryptographic audit record containing request details, risk score, and inspection latency.
+6. **Stage 5 - Decision Enforcement**:
+   - **ALLOW (`200 OK`)**: Request is safely forwarded to Service B.
+   - **BLOCK (`403 FORBIDDEN`)**: Request is terminated immediately at the proxy edge, preventing Service B from being compromised.
 
 ---
 
-## 📄 License & System Status
-- **Version**: 3.4.0
-- **Status**: Production-Ready SOC Command Center
-- **License**: Enterprise Proprietary - ZeroShield Security Systems
+## 🛑 Process 2: Lateral Movement & Anomaly Prevention Process
+
+### **Objective**
+Detect and stop compromised internal microservices from executing lateral movement attacks against internal databases, customer credentials vaults, or payment microservices.
+
+### **Detection & Isolation Mechanics**
+1. **Scope Claim Verification**: Even if a service presents a valid JWT, ZeroShield verifies if that specific service has `SCOPE_ACCESS` for the requested target endpoint.
+2. **Behavioral Anomaly Trigger**: If `Analytics-Worker` attempts to invoke `/api/v1/vault/customer/credentials`, ZeroShield flags an `UNAUTHORIZED_LATERAL_MOVEMENT_ATTEMPT`.
+3. **Automated Containment**:
+   - Proxy immediately drops the TCP connection with HTTP 403 Forbidden.
+   - Triggers an instant alert badge in the **Threat Detection SOC Module**.
+   - Increments threat counter and updates live Service Mesh status for the target node to `PROTECTED (ISOLATED)`.
+
+---
+
+## 📥 Process 3: Security Log Ingestion & Remote Stream Processing
+
+### **Objective**
+Ingest forensic log data from local files or remote cloud streams for offline security auditing and AI threat analysis.
+
+### **Ingestion Options & Workflow**
+
+#### **Option 1: Local File Upload (Drag & Drop)**
+- **Supported Formats**: `.log`, `.txt`, `.json`, `.csv`.
+- **Validation**: Verifies file extension and checks maximum payload limits (e.g. 50MB per file).
+- **Execution**: Renders interactive progress bar, sanitizes log lines, and generates a unique dataset ID (e.g. `LOG-2026-000124`).
+
+#### **Option 2: Remote Stream Access (URL / Webhook)**
+- **Supported Providers**: AWS S3 Bucket Log URLs, AWS CloudWatch Streams, Splunk HEC, Datadog Webhook, Kubernetes Audit HEC.
+- **Validation**: Connects via HTTP/HTTPS with optional `Bearer Token` authentication.
+- **Execution**: Connects stream asynchronously, assigns a stream ID (e.g. `REMOTE-LOG-2026-000891`), and streams records into the Analytics engine.
+
+---
+
+## 🛡️ Process 4: Dynamic Policy Engine & Rule Evaluation Process
+
+### **Objective**
+Enforce security governance policies dynamically across all microservice proxy nodes without requiring service restarts.
+
+### **Evaluated Policy Rules**
+1. **Strict Mutual TLS (mTLS 1.3)**: Mandates dual-way client certificate authentication.
+2. **Global Rate Limiting**: Enforces maximum requests per second per IP (e.g. 100 req/s).
+3. **Payload Sanitization**: Automatically strips SQL injection patterns and script tags.
+4. **Geographical IP Whitelisting**: Blocks traffic originating from restricted country codes.
+5. **JWT Key Auto-Rotation**: Enforces 15-minute token rotation cycles.
+
+---
+
+## 📜 Process 5: Immutable Cryptographic Audit Trail Logging
+
+### **Objective**
+Maintain a tamper-evident, audit-ready event log for regulatory compliance (SOC2, HIPAA, ISO 27001).
+
+### **Execution Workflow**
+1. Every proxy evaluation event produces a JSON payload: `timestamp`, `proxyId`, `originService`, `targetService`, `riskScore`, `decision`, `latencyMs`.
+2. Appends SHA-256 integrity hash to each ledger entry.
+3. Provides search, severity filtering (`CRITICAL`, `WARNING`, `INFO`), and export functionality (CSV/JSON).
+
+---
+
+## 📊 Process 6: Telemetry Aggregation & Real-Time Analytics Process
+
+### **Objective**
+Aggregate real-time proxy performance and security statistics into high-impact visual charts.
+
+### **Rendered Visual Metrics**
+- **Request Volume Breakdown (24h)**: AreaChart tracking Allowed vs Blocked volume trends.
+- **Overall Enforcement Ratio**: Pie Donut chart visualizing 97% Allowed vs 3% Blocked traffic.
+- **Average Proxy Latency**: BarChart displaying sub-15ms proxy processing overhead.
+- **Top Targeted Endpoints Table**: Ranked view of API endpoints facing the highest attack volume.
+
+---
+
+## ⚔️ Process 7: Cyber Attack Simulation & War-Room Mitigation
+
+### **Objective**
+Stress-test ZeroShield proxy defenses under controlled cyber attack scenarios.
+
+### **Supported Attack Vectors**
+1. **DDoS Attack Flood**: Simulates 10,000+ concurrent requests per second.
+2. **SQL Injection Attack Wave**: Injects SQL payload patterns across input fields.
+3. **JWT Credential Stuffing / Forgery**: Injects expired or malformed bearer tokens.
+
+### **Mitigation Process**
+- Proxy automatically throttles traffic, blocks malformed tokens, and updates threat level badge to `CRITICAL (ATTACK ACTIVE)`.
+- User can trigger **Reset & Purge Threats** to flush attack state and restore baseline operation.
+
+---
+
+## 🔒 Process 8: Role-Based Access Control (RBAC) Governance Process
+
+### **Objective**
+Enforce multi-tenant user access control across the ZeroShield dashboard based on assigned corporate role.
+
+### **Permission Matrix**
+
+| Module / Feature | SOC ADMIN | ANALYST | DEVOPS |
+| :--- | :---: | :---: | :---: |
+| **Dashboard** | Full Access | Full Access | Full Access |
+| **Zero Trust Proxy Engine** | Full Access | Full Access | Full Access |
+| **Live Traffic Inspector** | Full Access | Full Access | View-Only |
+| **Service Mesh Topology** | Full Access | Full Access | Full Access |
+| **Threat Detection** | Full Access | Full Access | View-Only |
+| **Policy Engine** | Full Access | Restricted | Restricted |
+| **Audit Logs** | Full Access | Full Access | View-Only |
+| **Upload Logs** | Full Access | Full Access | Full Access |
+| **Attack Simulation War-Room** | Full Access | Restricted | Restricted |
+| **Analytics Telemetry** | Full Access | Full Access | Full Access |
+| **Settings & Configuration** | Full Access | Restricted | Restricted |
+
+---
+
+## 💻 Tech Stack Summary
+- **Frontend**: React 19, Vite, TailwindCSS v4, Recharts, Lucide React Icons
+- **Backend**: Node.js, Express 5, Supabase PostgreSQL, Prisma ORM, WebSockets
+- **Protocols**: mTLS 1.3, RS256 JWT, HTTP/2, REST, JSON
