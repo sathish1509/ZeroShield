@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
 import { autoAuditLog } from '../middleware/auditLogger.js';
+import { trafficIngestRateLimiter } from '../middleware/rateLimiter.js';
 
 import {
   exportAuditLogs,
@@ -56,11 +57,14 @@ import {
   getThreatSummaryHandler,
   getTrafficSummaryHandler,
 } from '../controllers/analyticsController.js';
+import { getActiveSessions, revokeSession } from '../controllers/sessionController.js';
 
 const router = Router();
 
-// Current user permission resolution
+// Current user permission & active session resolution
 router.get('/users/me/permissions', authenticate, getCurrentUserPermissions);
+router.get('/users/me/sessions', authenticate, getActiveSessions);
+router.post('/sessions/:id/revoke', authenticate, autoAuditLog, revokeSession);
 
 // User Management (Admin only)
 router.get('/users', authenticate, authorize('users', 'view'), getUsers);
@@ -94,7 +98,7 @@ router.get('/topology', authenticate, authorize('topology', 'view'), getTopology
 
 // Live Traffic Streaming & Logs
 router.get('/traffic', authenticate, authorize('traffic', 'view'), getTraffic);
-router.post('/traffic', authenticate, authorize('traffic', 'manage'), autoAuditLog, createTrafficLog);
+router.post('/traffic', trafficIngestRateLimiter, authenticate, authorize('traffic', 'manage'), autoAuditLog, createTrafficLog);
 
 // Threat Detection Engine & Threat Management
 router.get('/threats', authenticate, authorize('threats', 'view'), getThreats);

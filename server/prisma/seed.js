@@ -260,6 +260,7 @@ async function main() {
         name: user.name,
         passwordHash,
         role: user.role,
+        isMfaEnabled: false,
       },
       create: {
         name: user.name,

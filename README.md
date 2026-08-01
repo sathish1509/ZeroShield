@@ -333,6 +333,106 @@ npm run backend:test-phase6
 
 ---
 
+## 🛡️ Phase 7 Backend: Enterprise Security Hardening Pass
+
+Phase 7 completes the backend by enforcing complete defense-in-depth security hardening across all earlier phases:
+
+1. **Environment Secrets Audit & Fail-Fast Startup**:
+   - Strict Zod schema validation on startup (`env.js`). Halts startup immediately if `DATABASE_URL`, `JWT_ACCESS_SECRET`, or `JWT_REFRESH_SECRET` are missing.
+   - Credentials bcrypt-hashed at seed time with zero raw secrets stored in code.
+2. **Rate Limiting & Abuse Prevention**:
+   - Global rate limiter (300 requests / 15 min / IP).
+   - Strict auth rate limiter on `/api/auth/login` (5 login attempts / 15 min / IP).
+   - Telemetry rate limiter on `/api/traffic` (100 ingests / min / IP).
+3. **HTTP Security Headers & Cookies**:
+   - `helmet()` middleware enforcing `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, and Content-Security-Policy.
+   - Refresh tokens stored in `httpOnly`, `sameSite: 'strict'`, `secure` cookies.
+4. **Session Management & Refresh Token Rotation**:
+   - Short-lived JWT access tokens (15m TTL).
+   - Refresh token rotation (old refresh token invalidated upon re-issue).
+   - Active user session tracking in `user_sessions` with instant session revocation endpoints (`POST /api/sessions/:id/revoke`).
+5. **TOTP Multi-Factor Authentication (MFA)**:
+   - Built-in TOTP MFA engine (RFC 6238 HMAC-SHA1) with secret generation, `otpauth://` QR URI formatting, and 6-digit code verification (`POST /api/auth/mfa/setup`, `POST /api/auth/mfa/verify`).
+6. **Production Error Masking**:
+   - Stack traces and internal database errors sanitized in production mode (`NODE_ENV === 'production'`).
+
+---
+
+## 🔒 Zero Trust Security Design Architecture
+
+ZeroShield was built ground-up to reflect the core tenets of the **Zero Trust Architecture Framework (NIST SP 800-207)**:
+
+| Zero Trust Core Principle | Concrete ZeroShield Implementation Feature | Technical Enforcement Mechanism |
+|---------------------------|--------------------------------------------|----------------------------------|
+| **1. Explicit Verification** | Multi-Factor Authentication (TOTP), Signed Service-to-Service JWT Credentials | `verifyTotpCode` HMAC validation, `verifyAccessToken` middleware, and RSA/HS256 service tokens (`ServiceIdentity`). |
+| **2. Least-Privilege Access** | Dynamic Role-Based Access Control (RBAC), Service-Scoped Resource Ownership | Policy engine evaluating `(role, resource, action)` matrices, blocking unauthorized mutations with HTTP 403 Forbidden. |
+| **3. Assume Breach** | Real-Time Threat Engine, Continuous Audit Logging, Active Session Revocation | Immediate tagging of anomaly patterns (`DDOS`, `SQLI`), database-backed audit log hooks on all write endpoints, and one-click session revocation (`UserSession`). |
+| **4. Continuous Monitoring** | Live Telemetry Streaming, Detection Latency Tracking, War-Room Attack Simulator | Microsecond anomaly detection, WebSocket live events, and detection latency SLAs (`detectedAt - injectedTimestamp`). |
+
+---
+
+## 📑 Complete API Reference Matrix (Phases 1-7)
+
+| Category | Endpoint | HTTP Method | Allowed Roles | Description |
+|----------|----------|-------------|---------------|-------------|
+| **Auth & MFA** | `/api/auth/login` | `POST` | Public (Rate-limited) | Authenticate user, verify MFA (if enabled), issue JWT & refresh cookie |
+| **Auth & MFA** | `/api/auth/refresh` | `POST` | Public | Rotate refresh token and issue fresh access token |
+| **Auth & MFA** | `/api/auth/logout` | `POST` | Authenticated | Revoke refresh token & clear httpOnly session cookie |
+| **Auth & MFA** | `/api/auth/mfa/setup` | `POST` | Authenticated | Initiate TOTP MFA setup & retrieve `otpauth://` QR URI |
+| **Auth & MFA** | `/api/auth/mfa/verify` | `POST` | Authenticated | Verify 6-digit TOTP code and enable MFA on account |
+| **Sessions** | `/api/users/me/sessions` | `GET` | Authenticated | List active user device sessions |
+| **Sessions** | `/api/sessions/:id/revoke` | `POST` | Admin, Owner | Immediately invalidate an active user session |
+| **Users** | `/api/users/me/permissions` | `GET` | Authenticated | Resolve allowed permissions for logged-in user |
+| **Users** | `/api/users` | `GET` | Admin | List system users |
+| **Users** | `/api/users` | `POST` | Admin | Create user with assigned RBAC role |
+| **Users** | `/api/users/:id/role` | `PUT` | Admin | Update user's assigned RBAC role |
+| **Policies** | `/api/policies` | `GET` | Admin, Analyst | List active & inactive security policies |
+| **Policies** | `/api/policies` | `POST` | Admin | Create security policy (Audit Logged) |
+| **Policies** | `/api/policies/:id` | `PUT` | Admin | Update security policy configuration |
+| **Policies** | `/api/policies/:id` | `DELETE` | Admin | Delete security policy |
+| **Services** | `/api/services` | `GET` | Admin, Analyst, DevOps | List registered microservices |
+| **Services** | `/api/services` | `POST` | Admin, DevOps | Register new microservice |
+| **Services** | `/api/services/:id` | `PUT` | Admin, DevOps (Owner) | Update microservice details |
+| **Services** | `/api/services/:id` | `DELETE` | Admin | Remove microservice from registry |
+| **Identity** | `/api/services/:id/identity` | `POST` | Admin, DevOps (Owner) | Issue service-to-service JWT identity credential |
+| **Identity** | `/api/services/:id/identity/revoke` | `POST` | Admin | Revoke service-to-service credential |
+| **Health** | `/api/services/:id/health` | `PUT` | Admin, Analyst, DevOps | Update health status (`HEALTHY`, `DEGRADED`, `DOWN`) |
+| **Topology** | `/api/topology` | `GET` | Admin, Analyst, DevOps | Graph topology nodes & inter-service connection edges |
+| **Traffic** | `/api/traffic` | `GET` | Admin, Analyst, DevOps | Query ingress traffic logs with filters |
+| **Traffic** | `/api/traffic` | `POST` | Admin, DevOps (Rate-limited) | Record ingress traffic log frame |
+| **Threats** | `/api/threats` | `GET` | Admin, Analyst, DevOps | Query security threats with severity & status filters |
+| **Threats** | `/api/threats` | `POST` | Admin, Analyst | Ingest detected threat anomaly |
+| **Threats** | `/api/threats/:id/status` | `PUT` | Admin, Analyst | Update threat status (`INVESTIGATING`, `RESOLVED`) |
+| **Simulation** | `/api/simulation/scenarios` | `GET` | Admin, Analyst | List predefined attack scenarios |
+| **Simulation** | `/api/simulation/run` | `POST` | Admin | Trigger attack simulation run (Audit Logged) |
+| **Simulation** | `/api/simulation/runs/:id/stop` | `POST` | Admin | Halt active attack simulation run |
+| **Simulation** | `/api/simulation/runs` | `GET` | Admin | List simulation run history |
+| **Simulation** | `/api/simulation/runs/:id` | `GET` | Admin | Detailed run timeline & detection latency SLAs |
+| **Audit** | `/api/audit` | `GET` | Admin, Analyst, DevOps | Query audit log history (Role-restricted for DevOps) |
+| **Audit** | `/api/audit/export` | `GET` | Admin, Analyst, DevOps | Export audit logs to CSV/JSON format |
+| **Analytics** | `/api/dashboard/summary` | `GET` | Admin, Analyst, DevOps | Landing dashboard top-line KPIs & mini trend |
+| **Analytics** | `/api/analytics/traffic-summary` | `GET` | Admin, Analyst, DevOps | Time-bucketed request volume & status code breakdown |
+| **Analytics** | `/api/analytics/threat-summary` | `GET` | Admin, Analyst, DevOps | Time-series threat trend & severity breakdown |
+| **Analytics** | `/api/analytics/service-health` | `GET` | Admin, Analyst, DevOps | Per-microservice uptime %, latency & error rates |
+| **Analytics** | `/api/analytics/audit-summary` | `GET` | Admin, Analyst, DevOps | Privileged audit activity counts by user/role/action |
+
+---
+
+### Run Complete Platform Automated Test Suite (Phases 1-7)
+
+```bash
+# Run individual phase test suites
+npm run backend:test-auth
+npm run backend:test-phase2
+npm run backend:test-phase3
+npm run backend:test-phase4
+npm run backend:test-phase5
+npm run backend:test-phase6
+npm run backend:test-phase7
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```

@@ -93,6 +93,8 @@ model User {
   email           String           @unique
   passwordHash    String           @map("password_hash")
   role            RoleName
+  mfaSecret       String?          @map("mfa_secret")
+  isMfaEnabled    Boolean          @default(false) @map("is_mfa_enabled")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   refreshTokens   RefreshToken[]
@@ -101,6 +103,7 @@ model User {
   microservices   Microservice[]
   resolvedThreats Threat[]         @relation("ThreatResolver")
   simulationRuns  SimulationRun[]  @relation("SimulationTriggerer")
+  sessions        UserSession[]
 
   @@map("users")
 }
@@ -137,6 +140,24 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model UserSession {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  refreshTokenId Int?      @map("refresh_token_id")
+  ipAddress      String?   @map("ip_address")
+  userAgent      String?   @map("user_agent")
+  lastActiveAt   DateTime  @default(now()) @map("last_active_at")
+  isRevoked      Boolean   @default(false) @map("is_revoked")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRevoked])
+  @@map("user_sessions")
 }
 
 model SecurityPolicy {
