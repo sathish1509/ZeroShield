@@ -74,3 +74,30 @@ export const createUserSchema = z.object({
 export const updateUserRoleSchema = z.object({
   role: z.enum(['ADMIN', 'ANALYST', 'DEVOPS']),
 });
+
+export const createServiceSchema = z.object({
+  name: z.string().trim().min(2, 'Service name must be at least 2 characters'),
+  description: z.string().trim().optional(),
+  baseUrl: z.string().trim().min(3, 'baseUrl is required'),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PENDING']).optional().default('ACTIVE'),
+  healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'DOWN']).optional().default('HEALTHY'),
+  tags: z.array(z.string()).optional().default([]),
+});
+
+export const updateServiceSchema = z.object({
+  name: z.string().trim().min(2).optional(),
+  description: z.string().trim().optional(),
+  baseUrl: z.string().trim().min(3).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PENDING']).optional(),
+  healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'DOWN']).optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const updateHealthSchema = z.object({
+  healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'DOWN']),
+});
+
+export const createIdentitySchema = z.object({
+  scope: z.array(z.string()).optional().default(['read', 'write']),
+  expiresInSeconds: z.number().int().positive().optional().default(86400),
+});

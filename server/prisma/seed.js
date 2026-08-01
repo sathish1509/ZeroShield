@@ -1,4 +1,4 @@
-import { PrismaClient, RoleName, RuleType, PolicyStatus } from '@prisma/client';
+import { PrismaClient, RoleName, RuleType, PolicyStatus, ServiceStatus, HealthStatus, ConnectionStatus } from '@prisma/client';
 import { hashPassword } from '../src/utils/password.js';
 
 const prisma = new PrismaClient();
@@ -30,6 +30,7 @@ const permissions = {
     ['analytics', 'view'], ['analytics', 'manage'],
     ['settings', 'view'], ['settings', 'manage'],
     ['users', 'view'], ['users', 'create'], ['users', 'update'], ['users', 'delete'], ['users', 'manage'],
+    ['services', 'view'], ['services', 'create'], ['services', 'update'], ['services', 'delete'], ['services', 'manage'],
   ],
   ANALYST: [
     ['dashboard', 'view'],
@@ -39,6 +40,7 @@ const permissions = {
     ['audit', 'view'],
     ['analytics', 'view'],
     ['policies', 'view'],
+    ['services', 'view'],
   ],
   DEVOPS: [
     ['dashboard', 'view'], ['dashboard', 'manage'],
@@ -47,6 +49,7 @@ const permissions = {
     ['traffic', 'view'],
     ['threats', 'view'],
     ['audit', 'view'],
+    ['services', 'view'], ['services', 'create'], ['services', 'update'], ['services', 'manage'],
   ],
 };
 
@@ -99,6 +102,65 @@ const initialPolicies = [
     ruleType: RuleType.PAYLOAD_VALIDATION,
     ruleConfig: { maxSizeBytes: 1048576, allowedContentTypes: ['application/json'] },
     status: PolicyStatus.ACTIVE,
+  },
+];
+
+const initialServices = [
+  {
+    name: 'Edge API Gateway',
+    description: 'Public entrance routing traffic into the ZeroShield proxy mesh',
+    baseUrl: 'https://gateway.zeroshield.io',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['gateway', 'dmz', 'ingress'],
+  },
+  {
+    name: 'Zero Trust Proxy Engine',
+    description: 'Central authorization and mTLS sidecar proxy engine',
+    baseUrl: 'https://proxy.internal.zeroshield.io',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['proxy', 'control-plane', 'zero-trust'],
+  },
+  {
+    name: 'Order Processing Service',
+    description: 'Handles customer checkout, order state and workflow state',
+    baseUrl: 'https://orders.service.internal',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['mesh', 'business-logic', 'orders'],
+  },
+  {
+    name: 'Payment Gateway Service',
+    description: 'Secure credit card and tokenized payment processing service',
+    baseUrl: 'https://payments.service.internal',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['pci-dss', 'payments', 'secure-enclave'],
+  },
+  {
+    name: 'Inventory & Stock Service',
+    description: 'Real-time SKU catalog, inventory reservation & warehouse stock',
+    baseUrl: 'https://inventory.service.internal',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['mesh', 'inventory', 'stock'],
+  },
+  {
+    name: 'Notification & SMS Engine',
+    description: 'Transactional email, push notifications & SMS delivery engine',
+    baseUrl: 'https://notifications.service.internal',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['mesh', 'notifications', 'async'],
+  },
+  {
+    name: 'Encrypted Core DB Cluster',
+    description: 'Primary PostgreSQL transactional database vault with AES-256 encryption',
+    baseUrl: 'postgres://db-vault.internal:5432/zeroshield',
+    status: ServiceStatus.ACTIVE,
+    healthStatus: HealthStatus.HEALTHY,
+    tags: ['database', 'vault', 'encrypted'],
   },
 ];
 
@@ -159,6 +221,8 @@ async function main() {
   }
 
   const adminUser = createdUserMap.get(RoleName.ADMIN);
+  const devopsUser = createdUserMap.get(RoleName.DEVOPS);
+
   if (adminUser) {
     for (const policy of initialPolicies) {
       const existing = await prisma.securityPolicy.findFirst({
@@ -176,7 +240,77 @@ async function main() {
     }
   }
 
-  console.log('Seed complete: roles, permissions, demo users, and security policies are ready.');
+  const serviceMap = new Map();
+  if (devopsUser && adminUser) {
+    for (let i = 0; i < initialServices.length; i++) {
+      const s = initialServices[i];
+      // Assign Gateway & Proxy to Admin, others to DevOps
+      const ownerId = i < 2 ? adminUser.id : devopsUser.id;
+
+      const row = await prisma.microservice.upsert({
+        where: { name: s.name },
+        update: {
+          description: s.description,
+          baseUrl: s.baseUrl,
+          status: s.status,
+          healthStatus: s.healthStatus,
+          tags: s.tags,
+        },
+        create: {
+          name: s.name,
+          description: s.description,
+          ownerId,
+          baseUrl: s.baseUrl,
+          status: s.status,
+          healthStatus: s.healthStatus,
+          tags: s.tags,
+        },
+      });
+      serviceMap.set(s.name, row);
+    }
+
+    // Seed Mesh Connections
+    const gw = serviceMap.get('Edge API Gateway');
+    const proxy = serviceMap.get('Zero Trust Proxy Engine');
+    const ord = serviceMap.get('Order Processing Service');
+    const pay = serviceMap.get('Payment Gateway Service');
+    const inv = serviceMap.get('Inventory & Stock Service');
+    const ntf = serviceMap.get('Notification & SMS Engine');
+    const db = serviceMap.get('Encrypted Core DB Cluster');
+
+    const connections = [
+      { source: gw, target: proxy, protocol: 'HTTPS', status: ConnectionStatus.ALLOWED },
+      { source: proxy, target: ord, protocol: 'mTLS', status: ConnectionStatus.ALLOWED },
+      { source: proxy, target: pay, protocol: 'mTLS', status: ConnectionStatus.ALLOWED },
+      { source: proxy, target: inv, protocol: 'mTLS', status: ConnectionStatus.ALLOWED },
+      { source: proxy, target: ntf, protocol: 'gRPC', status: ConnectionStatus.ALLOWED },
+      { source: ord, target: db, protocol: 'TCP/TLS', status: ConnectionStatus.ALLOWED },
+      { source: pay, target: db, protocol: 'TCP/TLS', status: ConnectionStatus.ALLOWED },
+    ];
+
+    for (const conn of connections) {
+      if (conn.source && conn.target) {
+        await prisma.serviceConnection.upsert({
+          where: {
+            connection_unique_link: {
+              sourceServiceId: conn.source.id,
+              targetServiceId: conn.target.id,
+              protocol: conn.protocol,
+            },
+          },
+          update: { status: conn.status },
+          create: {
+            sourceServiceId: conn.source.id,
+            targetServiceId: conn.target.id,
+            protocol: conn.protocol,
+            status: conn.status,
+          },
+        });
+      }
+    }
+  }
+
+  console.log('Seed complete: roles, permissions, demo users, policies, microservices, and mesh topology ready.');
 }
 
 main()

@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { findAuditLogs, getAuditSummary } from '../models/auditModel.js';
+import { findTopologyData } from '../models/serviceModel.js';
 
 const buildPayload = (module, message, req) => ({
   module,
@@ -15,9 +16,13 @@ export const getTraffic = (req, res) => {
   res.json({ data: buildPayload('traffic', 'Traffic inspection access granted.', req) });
 };
 
-export const getTopology = (req, res) => {
-  res.json({ data: buildPayload('topology', 'Service topology access granted.', req) });
-};
+export const getTopology = asyncHandler(async (_req, res) => {
+  const topology = await findTopologyData();
+  res.json({
+    status: 'success',
+    data: topology,
+  });
+});
 
 export const getThreats = (req, res) => {
   res.json({ data: buildPayload('threats', 'Threat monitoring access granted.', req) });

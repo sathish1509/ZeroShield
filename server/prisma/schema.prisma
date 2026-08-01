@@ -25,6 +25,24 @@ enum PolicyStatus {
   INACTIVE
 }
 
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum HealthStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
+enum ConnectionStatus {
+  ALLOWED
+  BLOCKED
+  PENDING_REVIEW
+}
+
 model User {
   id            Int              @id @default(autoincrement())
   name          String
@@ -36,6 +54,7 @@ model User {
   refreshTokens RefreshToken[]
   policies      SecurityPolicy[]
   auditLogs     AuditLog[]
+  microservices Microservice[]
 
   @@map("users")
 }
@@ -105,4 +124,54 @@ model AuditLog {
   @@index([resource])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Microservice {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  ownerId      Int           @map("owner_id")
+  baseUrl      String        @map("base_url")
+  status       ServiceStatus @default(ACTIVE)
+  healthStatus HealthStatus  @default(HEALTHY) @map("health_status")
+  tags         Json          @default("[]")
+  registeredAt DateTime      @default(now()) @map("registered_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  owner               User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  identities          ServiceIdentity[]
+  outgoingConnections ServiceConnection[] @relation("SourceService")
+  incomingConnections ServiceConnection[] @relation("TargetService")
+
+  @@index([ownerId])
+  @@map("microservices")
+}
+
+model ServiceIdentity {
+  id               Int          @id @default(autoincrement())
+  serviceId        Int          @map("service_id")
+  clientSecretHash String?      @map("client_secret_hash")
+  issuedAt         DateTime     @default(now()) @map("issued_at")
+  expiresAt        DateTime     @map("expires_at")
+  revoked          Boolean      @default(false)
+
+  service Microservice @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+  @@map("service_identities")
+}
+
+model ServiceConnection {
+  id              Int              @id @default(autoincrement())
+  sourceServiceId Int              @map("source_service_id")
+  targetServiceId Int              @map("target_service_id")
+  protocol        String           @default("HTTP")
+  status          ConnectionStatus @default(ALLOWED)
+  lastSeenAt      DateTime         @default(now()) @map("last_seen_at")
+
+  sourceService Microservice @relation("SourceService", fields: [sourceServiceId], references: [id], onDelete: Cascade)
+  targetService Microservice @relation("TargetService", fields: [targetServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceServiceId, targetServiceId, protocol], name: "connection_unique_link")
+  @@map("service_connections")
 }

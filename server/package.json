@@ -11,7 +11,8 @@
     "db:deploy": "prisma migrate deploy",
     "seed": "node prisma/seed.js",
     "test:auth": "node scripts/test-auth.js",
-    "test:phase2": "node scripts/test-phase2.js"
+    "test:phase2": "node scripts/test-phase2.js",
+    "test:phase3": "node scripts/test-phase3.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",

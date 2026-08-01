@@ -188,6 +188,46 @@ npm run test:phase2
 
 ---
 
+## 🌐 Phase 3 Backend: Microservice Registry, JWT Identities & Mesh Topology
+
+Phase 3 introduces microservice registration, service-to-service cryptographic JWT identity generation, graph-ready service mesh topology data, and health status monitoring.
+
+### Key Capabilities
+
+1. **Microservice Registry**: `microservices` database table with owner tracking, status (`ACTIVE`, `INACTIVE`, `PENDING`), health status (`HEALTHY`, `DEGRADED`, `DOWN`), and tags.
+2. **Service-to-Service JWT Identities**: Short-lived signed JWT credential generation (`POST /api/services/:id/identity`) containing `serviceId`, `serviceName`, `identityId`, and `scope` claims. Admin-only revocation (`POST /api/services/:id/identity/revoke`).
+3. **Service Mesh Topology Data**: `GET /api/topology` queries `microservices` and `service_connections` to output graph-ready `{ nodes, edges }` data structure accessible to all 3 roles.
+4. **Health Monitoring**: `GET /api/services/:id/health` and `PUT /api/services/:id/health` endpoints for inspecting and manually updating health status.
+5. **Automatic Audit Trail**: All service registrations, metadata updates, deregistration, identity generation, and health changes generate automatic audit log entries.
+
+### Phase 3 Endpoints Summary
+
+| Endpoint | HTTP Method | Allowed Roles | Description |
+|----------|-------------|---------------|-------------|
+| `/api/services` | `GET` | Admin, Analyst, DevOps | List all registered microservices |
+| `/api/services/:id` | `GET` | Admin, Analyst, DevOps | Get single microservice details |
+| `/api/services` | `POST` | Admin, DevOps | Register new microservice (Audit Logged) |
+| `/api/services/:id` | `PUT` | Admin, DevOps | Update microservice (DevOps restricted to owned services) |
+| `/api/services/:id` | `DELETE` | Admin | Deregister microservice (Audit Logged) |
+| `/api/services/:id/identity` | `POST` | Admin, DevOps | Issue short-lived JWT identity credential (Audit Logged) |
+| `/api/services/:id/identity/revoke` | `POST` | Admin | Revoke service identity credential (Audit Logged) |
+| `/api/services/:id/health` | `GET` | Admin, Analyst, DevOps | Get current health status |
+| `/api/services/:id/health` | `PUT` | Admin, DevOps | Update health status (Audit Logged) |
+| `/api/topology` | `GET` | Admin, Analyst, DevOps | Graph-ready service mesh topology data (`{ nodes, edges }`) |
+
+### Run Phase 3 Automated Tests
+
+```bash
+# Run Phase 3 backend verification test suite
+npm run backend:test-phase3
+
+# Or directly in server directory
+cd server
+npm run test:phase3
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```
