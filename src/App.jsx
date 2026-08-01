@@ -8,6 +8,7 @@ import { ShieldAlert, Lock, ArrowRight, CheckCircle2, Shield } from 'lucide-reac
 
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ZeroTrustProxyPage } from './pages/ZeroTrustProxyPage';
 import { LiveTrafficPage } from './pages/LiveTrafficPage';
 import { ServiceTopologyPage } from './pages/ServiceTopologyPage';
 import { ThreatDetectionPage } from './pages/ThreatDetectionPage';
@@ -86,6 +87,8 @@ const MainContent = () => {
     switch (currentPage) {
       case 'dashboard':
         return <DashboardPage />;
+      case 'proxy':
+        return <ZeroTrustProxyPage />;
       case 'traffic':
         return <LiveTrafficPage />;
       case 'topology':

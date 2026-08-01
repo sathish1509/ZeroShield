@@ -80,6 +80,12 @@ export const PAGE_ACCESS_MATRIX = {
     ANALYST: 'ALLOWED',
     DEVOPS: 'ALLOWED'
   },
+  proxy: {
+    pageName: 'Zero Trust Proxy Engine',
+    ADMIN: 'ALLOWED',
+    ANALYST: 'ALLOWED',
+    DEVOPS: 'ALLOWED'
+  },
   traffic: {
     pageName: 'Live Traffic',
     ADMIN: 'ALLOWED',
@@ -109,6 +115,12 @@ export const PAGE_ACCESS_MATRIX = {
     ADMIN: 'ALLOWED',
     ANALYST: 'ALLOWED',
     DEVOPS: 'VIEW_ONLY'
+  },
+  upload: {
+    pageName: 'Upload Security Logs',
+    ADMIN: 'ALLOWED',
+    ANALYST: 'ALLOWED',
+    DEVOPS: 'ALLOWED'
   },
   simulation: {
     pageName: 'Attack Simulation',

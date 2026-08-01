@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  ShieldCheck,
   Activity,
   Network,
   ShieldAlert,
@@ -10,10 +11,10 @@ import {
   BarChart3,
   Zap,
   Settings,
-  ShieldCheck,
   RotateCcw,
   Lock,
-  HelpCircle
+  HelpCircle,
+  Cpu
 } from 'lucide-react';
 import { useSecurity } from '../../context/SecurityContext';
 
@@ -22,6 +23,7 @@ export const Sidebar = () => {
 
   const navItems = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
+    { id: 'proxy', label: 'ZERO TRUST PROXY', icon: Cpu, highlight: true },
     { id: 'traffic', label: 'LIVE TRAFFIC', icon: Activity },
     { id: 'topology', label: 'SERVICE MESH', icon: Network },
     { id: 'threats', label: 'THREAT DETECTION', icon: ShieldAlert },
@@ -29,7 +31,7 @@ export const Sidebar = () => {
     { id: 'audit', label: 'AUDIT LOGS', icon: FileText },
     { id: 'upload', label: 'UPLOAD LOGS', icon: UploadCloud },
     { id: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
-    { id: 'simulation', label: 'ATTACK SIMULATION', icon: Zap, highlight: true },
+    { id: 'simulation', label: 'ATTACK SIMULATION', icon: Zap },
     { id: 'settings', label: 'SETTINGS', icon: Settings }
   ];
 
@@ -67,8 +69,8 @@ export const Sidebar = () => {
                     ? 'mint-active-pill'
                     : accessLevel === 'RESTRICTED'
                     ? 'text-slate-400 hover:bg-slate-200/50 opacity-70'
-                    : isHighlight && isSimulating
-                    ? 'bg-red-500 text-white shadow-md animate-pulse'
+                    : isHighlight
+                    ? 'bg-slate-900 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                 }`}
               >
@@ -76,7 +78,7 @@ export const Sidebar = () => {
                   {accessLevel === 'RESTRICTED' ? (
                     <Lock className="w-4 h-4 text-slate-400" />
                   ) : (
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isHighlight ? 'text-emerald-400' : 'text-slate-500'}`} />
                   )}
                   <span>{item.label}</span>
                 </div>
@@ -93,11 +95,9 @@ export const Sidebar = () => {
                   </span>
                 )}
 
-                {isHighlight && accessLevel === 'ALLOWED' && (
-                  <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                    isActive ? 'bg-slate-900 text-white' : 'bg-red-100 text-red-700 border border-red-300'
-                  }`}>
-                    WAR-ROOM
+                {isHighlight && accessLevel === 'ALLOWED' && !isActive && (
+                  <span className="px-1.5 py-0.5 text-[8px] font-mono font-bold rounded bg-emerald-400 text-slate-900 uppercase">
+                    CORE
                   </span>
                 )}
               </button>
