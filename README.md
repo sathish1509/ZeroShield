@@ -145,6 +145,49 @@ The smoke test verifies login, refresh, protected dashboard access, and logout f
 
 ---
 
+## ⚡ Phase 2 Backend: Dynamic RBAC, Policy Engine & Automatic Audit Logging
+
+Phase 2 introduces DB-driven dynamic permission enforcement, a full-featured Policy Engine, automatic audit logging for privileged operations, and User & Role Management.
+
+### Key Capabilities
+
+1. **Dynamic Permission Enforcement**: `authorize(resource, action)` middleware resolves permissions directly from the database `permissions` table matching the enterprise access matrix.
+2. **Current User Permissions API**: `GET /api/users/me/permissions` returns the active user's role and resolved permission array for conditional UI rendering.
+3. **Policy Engine**: Full CRUD for security policies (`RATE_LIMIT`, `IP_ALLOWLIST`, `AUTH_REQUIRED`, `PAYLOAD_VALIDATION`) with strict Zod `rule_config` shape validation.
+4. **Automatic Audit Logging**: `autoAuditLog` middleware automatically records all privileged write actions (policy CUD, user creation, role changes) to the `audit_logs` table without scattering code in controllers.
+5. **Role-Aware Audit Inspector**:
+   - **ADMIN** & **ANALYST**: Access full paginated audit logs with search, user, resource, and date range filters.
+   - **DEVOPS**: Receives summary-only aggregated metrics (total counts, action/resource breakdowns) to enforce confidential log restrictions.
+6. **User & Role Management**: Admin-only user creation (`POST /api/users`) and role modification (`PUT /api/users/:id/role`), which automatically generate audit logs.
+
+### Phase 2 Endpoints Summary
+
+| Endpoint | HTTP Method | Allowed Roles | Description |
+|----------|-------------|---------------|-------------|
+| `/api/users/me/permissions` | `GET` | All Authenticated | Returns active user role & permission array |
+| `/api/policies` | `GET` | Admin, Analyst | List all security policies |
+| `/api/policies/:id` | `GET` | Admin, Analyst | Get specific policy details |
+| `/api/policies` | `POST` | Admin | Create a new security policy (Audit Logged) |
+| `/api/policies/:id` | `PUT` | Admin | Update security policy (Audit Logged) |
+| `/api/policies/:id` | `DELETE` | Admin | Delete security policy (Audit Logged) |
+| `/api/audit` | `GET` | Admin, Analyst, DevOps | Audit log table (Full for Admin/Analyst, Summary-only for DevOps) |
+| `/api/users` | `GET` | Admin | List all registered system users |
+| `/api/users` | `POST` | Admin | Register new user (Audit Logged) |
+| `/api/users/:id/role` | `PUT` | Admin | Modify user role (Audit Logged) |
+
+### Run Phase 2 Automated Tests
+
+```bash
+# Run Phase 2 backend verification test suite
+npm run backend:test-phase2
+
+# Or directly in server directory
+cd server
+npm run test:phase2
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```

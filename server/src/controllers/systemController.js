@@ -1,3 +1,6 @@
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { findAuditLogs, getAuditSummary } from '../models/auditModel.js';
+
 const buildPayload = (module, message, req) => ({
   module,
   message,
@@ -8,34 +11,60 @@ export const getDashboard = (req, res) => {
   res.json({ data: buildPayload('dashboard', 'Authenticated dashboard access granted.', req) });
 };
 
-export const getPolicies = (req, res) => {
-  res.json({ data: buildPayload('policies', 'Policy management placeholder for ADMIN users.', req) });
-};
-
 export const getTraffic = (req, res) => {
-  res.json({ data: buildPayload('traffic', 'Traffic inspection placeholder.', req) });
+  res.json({ data: buildPayload('traffic', 'Traffic inspection access granted.', req) });
 };
 
 export const getTopology = (req, res) => {
-  res.json({ data: buildPayload('topology', 'Service topology placeholder.', req) });
+  res.json({ data: buildPayload('topology', 'Service topology access granted.', req) });
 };
 
 export const getThreats = (req, res) => {
-  res.json({ data: buildPayload('threats', 'Threat monitoring placeholder.', req) });
+  res.json({ data: buildPayload('threats', 'Threat monitoring access granted.', req) });
 };
 
-export const getAuditLogs = (req, res) => {
-  res.json({ data: buildPayload('audit', 'Audit log placeholder.', req) });
-};
+export const getAuditLogs = asyncHandler(async (req, res) => {
+  if (req.user.role === 'DEVOPS') {
+    const summary = await getAuditSummary();
+    return res.json({
+      status: 'success',
+      data: {
+        viewType: 'SUMMARY_ONLY',
+        summary,
+        message: 'DevOps role has summary-only access to audit statistics. Detailed log content is restricted.',
+      },
+    });
+  }
+
+  const { userId, resource, startDate, endDate, page, limit } = req.query;
+
+  const result = await findAuditLogs({
+    userId,
+    resource,
+    startDate,
+    endDate,
+    page,
+    limit,
+  });
+
+  res.json({
+    status: 'success',
+    data: {
+      viewType: 'FULL',
+      logs: result.logs,
+      pagination: result.pagination,
+    },
+  });
+});
 
 export const getSimulation = (req, res) => {
-  res.json({ data: buildPayload('simulation', 'Attack simulation placeholder for ADMIN users.', req) });
+  res.json({ data: buildPayload('simulation', 'Attack simulation access granted.', req) });
 };
 
 export const getAnalytics = (req, res) => {
-  res.json({ data: buildPayload('analytics', 'Analytics placeholder.', req) });
+  res.json({ data: buildPayload('analytics', 'Analytics access granted.', req) });
 };
 
 export const getSettings = (req, res) => {
-  res.json({ data: buildPayload('settings', 'Settings placeholder for ADMIN users.', req) });
+  res.json({ data: buildPayload('settings', 'Settings access granted.', req) });
 };

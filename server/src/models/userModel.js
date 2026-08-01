@@ -7,7 +7,55 @@ export const findUserByEmail = (email) =>
 
 export const findUserById = (id) =>
   prisma.user.findUnique({
-    where: { id },
+    where: { id: Number(id) },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+export const findAllUsers = () =>
+  prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+export const createUserDb = (data) =>
+  prisma.user.create({
+    data,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+export const updateUserRoleDb = (id, role) =>
+  prisma.user.update({
+    where: { id: Number(id) },
+    data: { role },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
 
 export const upsertUser = (data) =>
