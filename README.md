@@ -82,6 +82,69 @@ Once started, open **`http://localhost:5174/`** (or `http://localhost:5173/`) in
 
 ---
 
+## 🧩 Backend Foundation (Phase 1)
+
+ZeroShield now includes a dedicated backend scaffold in `server/` built with **Node.js + Express + PostgreSQL + Prisma** for authentication and role-based access control.
+
+### Backend structure
+
+```
+server/
+├── package.json
+├── .env.example
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.js
+│   └── migrations/
+│       └── 20260801000000_init/
+│           └── migration.sql
+└── src/
+    ├── config/
+    ├── controllers/
+    ├── middleware/
+    ├── models/
+    ├── routes/
+    └── utils/
+```
+
+### Environment variables
+
+Copy `server/.env.example` to `server/.env` and set your local values:
+
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_ACCESS_SECRET` — access token signing secret
+- `JWT_REFRESH_SECRET` — refresh token signing secret
+- `PORT` — API port
+
+### Install and run the API
+
+```bash
+cd server
+npm install
+npm run db:migrate
+npm run seed
+npm run dev
+```
+
+### Auth endpoints
+
+- `POST /api/auth/login` — email/password login, returns a short-lived access token and sets a refresh token cookie
+- `POST /api/auth/refresh` — issues a fresh access token from a valid refresh token cookie
+- `POST /api/auth/logout` — revokes the refresh token cookie
+
+### Smoke test the seeded demo users
+
+After seeding the database and starting the API, run:
+
+```bash
+cd server
+npm run test:auth
+```
+
+The smoke test verifies login, refresh, protected dashboard access, and logout for all three demo roles: **ADMIN**, **ANALYST**, and **DEVOPS**.
+
+---
+
 ## 📁 Repository Structure
 
 ```
@@ -91,6 +154,7 @@ ZeroShield/
 ├── index.html                     # Main HTML template
 ├── package.json                   # Project dependencies & scripts
 ├── vite.config.js                 # Vite & Tailwind build configuration
+├── server/                        # Express + Prisma backend foundation
 └── src/
     ├── App.jsx                    # Main application shell with RBAC page guard
     ├── index.css                  # Sovereign Light CSS tokens & micro-animations
