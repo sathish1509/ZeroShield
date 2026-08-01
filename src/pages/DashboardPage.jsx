@@ -4,7 +4,7 @@ import { ServiceMeshDiagram } from '../components/topology/ServiceMeshDiagram';
 import { RecentAlertsCard } from '../components/common/RecentAlertsCard';
 import { ThreatBreakdownCard } from '../components/common/ThreatBreakdownCard';
 import { GlassCard } from '../components/common/GlassCard';
-import { Activity, ShieldCheck, ShieldAlert, Server, Gauge, Zap, Key, CheckCircle2 } from 'lucide-react';
+import { Activity, ShieldCheck, ShieldAlert, Server, Gauge, Zap, CheckCircle2, Shield } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 import {
   AreaChart,
@@ -33,15 +33,15 @@ export const DashboardPage = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h1 className="text-2xl font-bold font-sans tracking-tight text-slate-900">ZeroShield Command Vault</h1>
+                <h1 className="text-2xl font-bold font-sans tracking-tight text-slate-900">ZeroShield Security Console</h1>
                 <p className="text-xs text-slate-500 font-sans mt-0.5">
-                  Welcome back, SecOps Admin. Sovereign API traffic is end-to-end encrypted across 8 microservices.
+                  Welcome back, SecOps Admin. Microservice API traffic is mTLS encrypted and verified across 8 proxy nodes.
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-mono font-bold flex items-center gap-1.5 shadow-xs">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  END-TO-END ENCRYPTED
+                  ZERO-TRUST ENFORCED
                 </span>
               </div>
             </div>
@@ -49,17 +49,17 @@ export const DashboardPage = () => {
             <div className="grid grid-cols-3 gap-6 mt-6 pt-4 border-t border-slate-100 text-left">
               <div>
                 <h2 className="text-3xl font-black font-sans tracking-tight text-slate-900">1.42M</h2>
-                <p className="text-xs font-semibold font-sans text-slate-500 mt-0.5">Secure Records</p>
+                <p className="text-xs font-semibold font-sans text-slate-500 mt-0.5">Verified API Requests</p>
                 <div className="w-full bg-slate-900 h-1 rounded-full mt-2" />
               </div>
               <div>
                 <h2 className="text-3xl font-black font-sans tracking-tight text-slate-900">06</h2>
-                <p className="text-xs font-semibold font-sans text-slate-500 mt-0.5">Active Policies</p>
+                <p className="text-xs font-semibold font-sans text-slate-500 mt-0.5">Active Security Policies</p>
                 <div className="w-full bg-slate-700 h-1 rounded-full mt-2" />
               </div>
               <div>
                 <h2 className="text-3xl font-black font-sans tracking-tight text-slate-900">99.9%</h2>
-                <p className="text-xs font-semibold font-sans text-slate-500 mt-0.5">Data Integrity</p>
+                <p className="text-xs font-semibold font-sans text-slate-500 mt-0.5">Threat Defense Rate</p>
                 <div className="w-full bg-slate-900 h-1 rounded-full mt-2" />
               </div>
             </div>
@@ -67,33 +67,33 @@ export const DashboardPage = () => {
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
             <div className="flex items-center gap-2 text-slate-600">
-              <Key className="w-4 h-4 text-slate-900" />
-              <span>Hardware signature: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">0x_12345...8f2</code></span>
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>mTLS Gateway Node: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">node-proxy-ap-south-1</code></span>
             </div>
             <button className="text-xs text-slate-900 font-bold uppercase hover:underline cursor-pointer">
-              RE-VERIFY ALL
+              VERIFY KEYS
             </button>
           </div>
         </GlassCard>
 
-        {/* Dark Hero Card */}
+        {/* Dark Hero Card - ZeroTrust Proxy Engine */}
         <GlassCard dark className="flex flex-col justify-between p-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-              <Key className="w-5 h-5 text-emerald-400" />
-              <span>H-OS ID: 881-22-LX</span>
+              <Shield className="w-5 h-5 text-emerald-400" />
+              <span>PROXY ID: ZS-MESH-01</span>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold font-sans text-white tracking-tight">ZeroShield Core Engine</h2>
-              <p className="text-xs font-mono text-emerald-400 mt-1">Sovereign Identity Key Active</p>
+              <h2 className="text-xl font-bold font-sans text-white tracking-tight">ZeroTrust Proxy Engine</h2>
+              <p className="text-xs font-mono text-emerald-400 mt-1">mTLS 1.3 & RS256 Active</p>
             </div>
           </div>
 
           <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <span className="text-xs font-mono font-bold text-slate-300 uppercase">VAULT ENCRYPTION</span>
-            <span className="px-3 py-1 rounded-lg bg-slate-800 text-white border border-slate-700 text-xs font-mono font-bold">
-              AES-256
+            <span className="text-xs font-mono font-bold text-slate-300 uppercase">MESH PROTOCOL</span>
+            <span className="px-3 py-1 rounded-lg bg-slate-800 text-emerald-400 border border-slate-700 text-xs font-mono font-bold">
+              mTLS 1.3 + JWT
             </span>
           </div>
         </GlassCard>
@@ -167,7 +167,7 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Bottom Analytics Section (Black & Slate Palette) */}
+      {/* Bottom Analytics Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <GlassCard className="border border-slate-200/80 bg-white p-5">
           <h3 className="text-xs font-bold font-sans text-slate-900 uppercase tracking-wider mb-3">Request Trend (24h)</h3>
