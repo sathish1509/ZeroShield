@@ -1,4 +1,14 @@
-import { PrismaClient, RoleName, RuleType, PolicyStatus, ServiceStatus, HealthStatus, ConnectionStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  RoleName,
+  RuleType,
+  PolicyStatus,
+  ServiceStatus,
+  HealthStatus,
+  ConnectionStatus,
+  ThreatRuleType,
+  ThreatSeverity,
+} from '@prisma/client';
 import { hashPassword } from '../src/utils/password.js';
 
 const prisma = new PrismaClient();
@@ -23,7 +33,7 @@ const permissions = {
     ['dashboard', 'view'], ['dashboard', 'manage'],
     ['traffic', 'view'], ['traffic', 'manage'],
     ['topology', 'view'], ['topology', 'manage'],
-    ['threats', 'view'], ['threats', 'manage'],
+    ['threats', 'view'], ['threats', 'manage'], ['threats', 'update'],
     ['policies', 'view'], ['policies', 'create'], ['policies', 'update'], ['policies', 'delete'], ['policies', 'manage'],
     ['audit', 'view'], ['audit', 'manage'],
     ['simulation', 'view'], ['simulation', 'manage'],
@@ -36,7 +46,7 @@ const permissions = {
     ['dashboard', 'view'],
     ['traffic', 'view'],
     ['topology', 'view'],
-    ['threats', 'view'],
+    ['threats', 'view'], ['threats', 'update'],
     ['audit', 'view'],
     ['analytics', 'view'],
     ['policies', 'view'],
@@ -102,6 +112,37 @@ const initialPolicies = [
     ruleType: RuleType.PAYLOAD_VALIDATION,
     ruleConfig: { maxSizeBytes: 1048576, allowedContentTypes: ['application/json'] },
     status: PolicyStatus.ACTIVE,
+  },
+];
+
+const initialThreatRules = [
+  {
+    name: 'Traffic Burst Rate Limit Exceeded',
+    ruleType: ThreatRuleType.RATE_LIMIT_EXCEEDED,
+    thresholdConfig: { maxRequestsPerWindow: 10, windowSeconds: 10 },
+    severity: ThreatSeverity.HIGH,
+    enabled: true,
+  },
+  {
+    name: 'Repeated Authentication Failures',
+    ruleType: ThreatRuleType.REPEATED_AUTH_FAILURE,
+    thresholdConfig: { maxFailures: 3, windowSeconds: 30 },
+    severity: ThreatSeverity.HIGH,
+    enabled: true,
+  },
+  {
+    name: 'Unusual Endpoint / Malicious SQLi Access',
+    ruleType: ThreatRuleType.UNUSUAL_ENDPOINT_ACCESS,
+    thresholdConfig: { detectPatterns: ['UNION SELECT', 'OR 1=1', '<script>', 'DROP TABLE'] },
+    severity: ThreatSeverity.CRITICAL,
+    enabled: true,
+  },
+  {
+    name: 'Excessive Payload Size Anomaly',
+    ruleType: ThreatRuleType.PAYLOAD_ANOMALY,
+    thresholdConfig: { maxSizeBytes: 1048576 },
+    severity: ThreatSeverity.MEDIUM,
+    enabled: true,
   },
 ];
 
@@ -240,11 +281,21 @@ async function main() {
     }
   }
 
+  for (const tr of initialThreatRules) {
+    const existing = await prisma.threatRule.findFirst({
+      where: { name: tr.name },
+    });
+    if (!existing) {
+      await prisma.threatRule.create({
+        data: tr,
+      });
+    }
+  }
+
   const serviceMap = new Map();
   if (devopsUser && adminUser) {
     for (let i = 0; i < initialServices.length; i++) {
       const s = initialServices[i];
-      // Assign Gateway & Proxy to Admin, others to DevOps
       const ownerId = i < 2 ? adminUser.id : devopsUser.id;
 
       const row = await prisma.microservice.upsert({
@@ -269,7 +320,6 @@ async function main() {
       serviceMap.set(s.name, row);
     }
 
-    // Seed Mesh Connections
     const gw = serviceMap.get('Edge API Gateway');
     const proxy = serviceMap.get('Zero Trust Proxy Engine');
     const ord = serviceMap.get('Order Processing Service');
@@ -310,7 +360,7 @@ async function main() {
     }
   }
 
-  console.log('Seed complete: roles, permissions, demo users, policies, microservices, and mesh topology ready.');
+  console.log('Seed complete: roles, permissions, demo users, policies, threat rules, microservices, and mesh topology ready.');
 }
 
 main()

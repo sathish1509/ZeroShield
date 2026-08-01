@@ -8,10 +8,7 @@ import {
   getAuditLogs,
   getDashboard,
   getSettings,
-  getSimulation,
-  getThreats,
   getTopology,
-  getTraffic,
 } from '../controllers/systemController.js';
 
 import {
@@ -40,6 +37,10 @@ import {
   updateService,
   updateServiceHealth,
 } from '../controllers/serviceController.js';
+
+import { createTrafficLog, getTraffic } from '../controllers/trafficController.js';
+import { createThreat, getThreats, updateThreatStatus } from '../controllers/threatController.js';
+import { executeSimulation, getSimulation } from '../controllers/simulationController.js';
 
 const router = Router();
 
@@ -76,14 +77,24 @@ router.put('/services/:id/health', authenticate, authorize('services', 'update')
 // Service Mesh Topology Data
 router.get('/topology', authenticate, authorize('topology', 'view'), getTopology);
 
+// Live Traffic Streaming & Logs
+router.get('/traffic', authenticate, authorize('traffic', 'view'), getTraffic);
+router.post('/traffic', authenticate, authorize('traffic', 'manage'), autoAuditLog, createTrafficLog);
+
+// Threat Detection Engine & Threat Management
+router.get('/threats', authenticate, authorize('threats', 'view'), getThreats);
+router.post('/threats', authenticate, authorize('threats', 'manage'), autoAuditLog, createThreat);
+router.put('/threats/:id/status', authenticate, authorize('threats', 'update'), autoAuditLog, updateThreatStatus);
+
+// SOC Attack War-Room Simulator
+router.get('/simulation', authenticate, authorize('simulation', 'view'), getSimulation);
+router.post('/simulation/execute', authenticate, authorize('simulation', 'manage'), autoAuditLog, executeSimulation);
+
 // Audit Logs
 router.get('/audit', authenticate, authorize('audit', 'view'), getAuditLogs);
 
-// Platform System Endpoints
+// System Metrics & Analytics
 router.get('/dashboard', authenticate, authorize('dashboard', 'view'), getDashboard);
-router.get('/traffic', authenticate, authorize('traffic', 'view'), getTraffic);
-router.get('/threats', authenticate, authorize('threats', 'view'), getThreats);
-router.get('/simulation', authenticate, authorize('simulation', 'view'), getSimulation);
 router.get('/analytics', authenticate, authorize('analytics', 'view'), getAnalytics);
 router.get('/settings', authenticate, authorize('settings', 'view'), getSettings);
 

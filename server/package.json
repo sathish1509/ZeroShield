@@ -12,7 +12,8 @@
     "seed": "node prisma/seed.js",
     "test:auth": "node scripts/test-auth.js",
     "test:phase2": "node scripts/test-phase2.js",
-    "test:phase3": "node scripts/test-phase3.js"
+    "test:phase3": "node scripts/test-phase3.js",
+    "test:phase4": "node scripts/test-phase4.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
@@ -22,6 +23,7 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "ws": "^8.21.1",
     "zod": "^4.0.17"
   },
   "devDependencies": {

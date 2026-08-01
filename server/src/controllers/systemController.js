@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { findAuditLogs, getAuditSummary } from '../models/auditModel.js';
 import { findTopologyData } from '../models/serviceModel.js';
+import { getAnalyticsDetailedMetrics, getDashboardSummaryMetrics } from '../models/analyticsModel.js';
 
 const buildPayload = (module, message, req) => ({
   module,
@@ -8,13 +9,17 @@ const buildPayload = (module, message, req) => ({
   user: req.user,
 });
 
-export const getDashboard = (req, res) => {
-  res.json({ data: buildPayload('dashboard', 'Authenticated dashboard access granted.', req) });
-};
-
-export const getTraffic = (req, res) => {
-  res.json({ data: buildPayload('traffic', 'Traffic inspection access granted.', req) });
-};
+export const getDashboard = asyncHandler(async (req, res) => {
+  const summary = await getDashboardSummaryMetrics();
+  res.json({
+    status: 'success',
+    data: {
+      user: req.user,
+      kpis: summary.kpis,
+      recentAlerts: summary.recentAlerts,
+    },
+  });
+});
 
 export const getTopology = asyncHandler(async (_req, res) => {
   const topology = await findTopologyData();
@@ -23,10 +28,6 @@ export const getTopology = asyncHandler(async (_req, res) => {
     data: topology,
   });
 });
-
-export const getThreats = (req, res) => {
-  res.json({ data: buildPayload('threats', 'Threat monitoring access granted.', req) });
-};
 
 export const getAuditLogs = asyncHandler(async (req, res) => {
   if (req.user.role === 'DEVOPS') {
@@ -62,13 +63,16 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   });
 });
 
-export const getSimulation = (req, res) => {
-  res.json({ data: buildPayload('simulation', 'Attack simulation access granted.', req) });
-};
-
-export const getAnalytics = (req, res) => {
-  res.json({ data: buildPayload('analytics', 'Analytics access granted.', req) });
-};
+export const getAnalytics = asyncHandler(async (req, res) => {
+  const metrics = await getAnalyticsDetailedMetrics();
+  res.json({
+    status: 'success',
+    data: {
+      user: req.user,
+      ...metrics,
+    },
+  });
+});
 
 export const getSettings = (req, res) => {
   res.json({ data: buildPayload('settings', 'Settings access granted.', req) });

@@ -13,7 +13,8 @@
     "backend:seed": "npm --prefix server run seed",
     "backend:test-auth": "npm --prefix server run test:auth",
     "backend:test-phase2": "npm --prefix server run test:phase2",
-    "backend:test-phase3": "npm --prefix server run test:phase3"
+    "backend:test-phase3": "npm --prefix server run test:phase3",
+    "backend:test-phase4": "npm --prefix server run test:phase4"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

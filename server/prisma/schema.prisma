@@ -43,18 +43,41 @@ enum ConnectionStatus {
   PENDING_REVIEW
 }
 
+enum ThreatRuleType {
+  RATE_LIMIT_EXCEEDED
+  REPEATED_AUTH_FAILURE
+  UNUSUAL_ENDPOINT_ACCESS
+  PAYLOAD_ANOMALY
+  GEO_ANOMALY
+}
+
+enum ThreatSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ThreatStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  FALSE_POSITIVE
+}
+
 model User {
-  id            Int              @id @default(autoincrement())
-  name          String
-  email         String           @unique
-  passwordHash  String           @map("password_hash")
-  role          RoleName
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
-  refreshTokens RefreshToken[]
-  policies      SecurityPolicy[]
-  auditLogs     AuditLog[]
-  microservices Microservice[]
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String           @unique
+  passwordHash    String           @map("password_hash")
+  role            RoleName
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  refreshTokens   RefreshToken[]
+  policies        SecurityPolicy[]
+  auditLogs       AuditLog[]
+  microservices   Microservice[]
+  resolvedThreats Threat[]         @relation("ThreatResolver")
 
   @@map("users")
 }
@@ -142,6 +165,9 @@ model Microservice {
   identities          ServiceIdentity[]
   outgoingConnections ServiceConnection[] @relation("SourceService")
   incomingConnections ServiceConnection[] @relation("TargetService")
+  sourceTraffic       TrafficLog[]        @relation("SourceTraffic")
+  targetTraffic       TrafficLog[]        @relation("TargetTraffic")
+  threats             Threat[]            @relation("ServiceThreats")
 
   @@index([ownerId])
   @@map("microservices")
@@ -174,4 +200,63 @@ model ServiceConnection {
 
   @@unique([sourceServiceId, targetServiceId, protocol], name: "connection_unique_link")
   @@map("service_connections")
+}
+
+model TrafficLog {
+  id               Int      @id @default(autoincrement())
+  sourceServiceId  Int?     @map("source_service_id")
+  targetServiceId  Int?     @map("target_service_id")
+  method           String
+  endpoint         String
+  statusCode       Int      @map("status_code")
+  responseTimeMs   Int      @map("response_time_ms")
+  requestSizeBytes Int      @map("request_size_bytes")
+  ipAddress        String   @map("ip_address")
+  timestamp        DateTime @default(now())
+
+  sourceService Microservice? @relation("SourceTraffic", fields: [sourceServiceId], references: [id], onDelete: SetNull)
+  targetService Microservice? @relation("TargetTraffic", fields: [targetServiceId], references: [id], onDelete: SetNull)
+
+  @@index([sourceServiceId])
+  @@index([targetServiceId])
+  @@index([statusCode])
+  @@index([ipAddress])
+  @@index([timestamp])
+  @@map("traffic_logs")
+}
+
+model ThreatRule {
+  id              Int            @id @default(autoincrement())
+  name            String
+  ruleType        ThreatRuleType @map("rule_type")
+  thresholdConfig Json           @map("threshold_config")
+  severity        ThreatSeverity @default(MEDIUM)
+  enabled         Boolean        @default(true)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  threats         Threat[]
+
+  @@map("threat_rules")
+}
+
+model Threat {
+  id              Int            @id @default(autoincrement())
+  ruleId          Int?           @map("rule_id")
+  sourceServiceId Int?           @map("source_service_id")
+  ipAddress       String?        @map("ip_address")
+  description     String
+  severity        ThreatSeverity
+  status          ThreatStatus   @default(OPEN)
+  detectedAt      DateTime       @default(now()) @map("detected_at")
+  resolvedAt      DateTime?      @map("resolved_at")
+  resolvedBy      Int?           @map("resolved_by")
+
+  rule          ThreatRule?   @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  sourceService Microservice? @relation("ServiceThreats", fields: [sourceServiceId], references: [id], onDelete: SetNull)
+  resolver      User?         @relation("ThreatResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+
+  @@index([severity])
+  @@index([status])
+  @@index([sourceServiceId])
+  @@index([detectedAt])
+  @@map("threats")
 }
