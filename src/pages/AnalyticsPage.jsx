@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { GlassCard } from '../components/common/GlassCard';
-import { BarChart3, TrendingUp, ShieldAlert, Activity, Clock, Target, Eye, Zap } from 'lucide-react';
+import { BarChart3, TrendingUp, ShieldAlert, Activity, Clock, Target } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -18,27 +18,12 @@ import {
 import { HOURLY_REQUEST_DATA, RISK_SCORE_DISTRIBUTION } from '../mock/mockData';
 
 export const AnalyticsPage = () => {
-  // State for Hover Readout Placeholders
-  const [hoveredVolume, setHoveredVolume] = useState(null);
-  const [hoveredLatency, setHoveredLatency] = useState(null);
-  const [hoveredRisk, setHoveredRisk] = useState(null);
-
   const targetedEndpoints = [
     { ep: '/api/v1/payments/charge', service: 'Payment Service', attempts: 18450, blocked: 18450, risk: '99/100', rating: 'Critical' },
     { ep: '/api/v1/orders/create', service: 'Order Processing Service', attempts: 14200, blocked: 14120, risk: '96/100', rating: 'High' },
     { ep: '/api/v1/inventory/query', service: 'Inventory & Stock Service', attempts: 8900, blocked: 8900, risk: '88/100', rating: 'High' },
     { ep: '/api/v1/notifications/send', service: 'Notification Engine', attempts: 3200, blocked: 3100, risk: '76/100', rating: 'Elevated' }
   ];
-
-  // Default values when not hovering
-  const defaultVolumePoint = HOURLY_REQUEST_DATA[HOURLY_REQUEST_DATA.length - 1];
-  const activeVolume = hoveredVolume || defaultVolumePoint;
-
-  const defaultLatencyPoint = HOURLY_REQUEST_DATA[HOURLY_REQUEST_DATA.length - 1];
-  const activeLatency = hoveredLatency || defaultLatencyPoint;
-
-  const defaultRiskPoint = RISK_SCORE_DISTRIBUTION[0];
-  const activeRisk = hoveredRisk || defaultRiskPoint;
 
   return (
     <div className="space-y-6">
@@ -47,7 +32,7 @@ export const AnalyticsPage = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-2 rounded-xl bg-slate-900 text-white">
+              <div className="p-2 rounded-xl bg-slate-900 text-white shadow-xs">
                 <BarChart3 className="w-5 h-5" />
               </div>
               <h1 className="text-xl font-bold font-sans tracking-tight text-slate-900">
@@ -55,48 +40,28 @@ export const AnalyticsPage = () => {
               </h1>
             </div>
             <p className="text-xs text-slate-500 font-sans">
-              Hover over graph points to display live metrics directly in the top readout placeholder
+              Real-time API traffic metrics, latency breakdown, and threat enforcement statistics
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-mono font-bold flex items-center gap-1.5 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              LIVE TELEMETRY ACTIVE
+              MONOCHROME TELEMETRY
             </span>
           </div>
         </div>
       </GlassCard>
 
-      {/* Row 1: Request Volume Breakdown (Values Display EXCLUSIVELY in Top Readout Header) */}
+      {/* Row 1: Request Volume Breakdown & Overall Enforcement Ratio (Monochrome Dark Navy & Slate Theme) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <GlassCard className="lg:col-span-2 border border-slate-200/80 bg-white p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-slate-900" />
-                  Request Volume Breakdown (Allowed vs Blocked)
-                </h3>
-                <p className="text-xs text-slate-500 font-sans mt-0.5">Move cursor along graph to update top placeholder values</p>
-              </div>
-
-              {/* DEDICATED TOP STATIC READOUT PLACEHOLDER BOX */}
-              <div className="p-2.5 rounded-xl bg-slate-900 text-white font-mono text-xs flex items-center gap-4 shrink-0 shadow-sm border border-slate-800">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-400">
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>POINT: <strong className="text-white">{activeVolume.time}</strong></span>
-                </div>
-                <div className="border-l border-slate-700 pl-3">
-                  <span className="text-slate-400">ALLOWED: </span>
-                  <strong className="text-white">{activeVolume.allowed?.toLocaleString()} reqs</strong>
-                </div>
-                <div className="border-l border-slate-700 pl-3">
-                  <span className="text-slate-400">BLOCKED: </span>
-                  <strong className="text-rose-400">{activeVolume.blocked?.toLocaleString()} reqs</strong>
-                </div>
-              </div>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-slate-900" />
+              Request Volume Breakdown (Allowed vs Blocked)
+            </h3>
+            <p className="text-xs text-slate-500 font-sans mt-0.5">24-hour comparative analysis of clean traffic vs blocked attacks</p>
           </div>
 
           <div className="h-72 mt-2">
@@ -104,19 +69,13 @@ export const AnalyticsPage = () => {
               <AreaChart
                 data={HOURLY_REQUEST_DATA}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onMouseMove={(state) => {
-                  if (state && state.activePayload && state.activePayload.length > 0) {
-                    setHoveredVolume(state.activePayload[0].payload);
-                  }
-                }}
-                onMouseLeave={() => setHoveredVolume(null)}
               >
                 <defs>
-                  <linearGradient id="blackAllowedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor="#0F172A" stopOpacity={0.01}/>
+                  <linearGradient id="monoDarkSlateGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#0F172A" stopOpacity={0.02}/>
                   </linearGradient>
-                  <linearGradient id="blockedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="monoBlockedGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.4}/>
                     <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.02}/>
                   </linearGradient>
@@ -125,20 +84,19 @@ export const AnalyticsPage = () => {
                 <XAxis dataKey="time" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
                 <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
 
-                {/* Hide Floating Popup Tooltip (Values render in Top Readout Header) */}
                 <Tooltip
-                  wrapperStyle={{ display: 'none' }}
-                  cursor={{ stroke: '#0F172A', strokeWidth: 1.5, strokeDasharray: '4 4' }}
+                  contentStyle={{ background: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#FFFFFF' }}
+                  itemStyle={{ color: '#E2E8F0' }}
                 />
 
-                <Area type="monotone" dataKey="allowed" stroke="#0F172A" strokeWidth={2.5} fillOpacity={1} fill="url(#blackAllowedGrad)" name="Allowed Requests" />
-                <Area type="monotone" dataKey="blocked" stroke="#E11D48" strokeWidth={2.5} fillOpacity={1} fill="url(#blockedGrad)" name="Blocked Requests" />
+                <Area type="monotone" dataKey="allowed" stroke="#0F172A" strokeWidth={2.5} fillOpacity={1} fill="url(#monoDarkSlateGrad)" name="Allowed Requests" />
+                <Area type="monotone" dataKey="blocked" stroke="#F43F5E" strokeWidth={2.5} fillOpacity={1} fill="url(#monoBlockedGrad)" name="Blocked Requests" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </GlassCard>
 
-        {/* Overall Enforcement Ratio Donut */}
+        {/* Overall Enforcement Ratio Donut (Dark Navy & Rose Slate) */}
         <GlassCard className="lg:col-span-1 border border-slate-200/80 bg-white p-6 flex flex-col justify-between">
           <div>
             <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
@@ -172,7 +130,7 @@ export const AnalyticsPage = () => {
 
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-3xl font-black font-sans tracking-tight text-slate-900">97%</span>
-              <span className="text-xs font-bold font-sans text-slate-700">Allowed Traffic</span>
+              <span className="text-xs font-bold font-sans text-slate-600">Allowed Traffic</span>
             </div>
           </div>
 
@@ -189,26 +147,16 @@ export const AnalyticsPage = () => {
         </GlassCard>
       </div>
 
-      {/* Row 2: Average Proxy Latency & Risk Score Histogram */}
+      {/* Row 2: Average Proxy Latency & Risk Score Histogram (Monochrome Dark Navy #1E293B & #334155 Theme) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Latency Bar Chart Card */}
         <GlassCard className="border border-slate-200/80 bg-white p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-900" />
-                Average Proxy Latency (ms)
-              </h3>
-              <p className="text-xs text-slate-500 font-sans mt-0.5">Hover bar to update top placeholder value</p>
-            </div>
-
-            {/* TOP LATENCY STATIC READOUT PLACEHOLDER */}
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-xs border border-slate-800">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
-              <span>TIME: <strong>{activeLatency.time}</strong></span>
-              <span className="text-slate-700">|</span>
-              <span>LATENCY: <strong className="text-white">{activeLatency.latency}ms</strong></span>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-900" />
+              Average Proxy Latency (ms)
+            </h3>
+            <p className="text-xs text-slate-500 font-sans mt-0.5">End-to-end mTLS authentication and inspection latency</p>
           </div>
 
           <div className="h-64">
@@ -216,18 +164,14 @@ export const AnalyticsPage = () => {
               <BarChart
                 data={HOURLY_REQUEST_DATA}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onMouseMove={(state) => {
-                  if (state && state.activePayload && state.activePayload.length > 0) {
-                    setHoveredLatency(state.activePayload[0].payload);
-                  }
-                }}
-                onMouseLeave={() => setHoveredLatency(null)}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                 <XAxis dataKey="time" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
                 <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip wrapperStyle={{ display: 'none' }} />
-                <Bar dataKey="latency" fill="#0F172A" radius={[8, 8, 0, 0]} name="Latency (ms)" />
+                <Tooltip
+                  contentStyle={{ background: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#FFFFFF' }}
+                />
+                <Bar dataKey="latency" fill="#1E293B" radius={[8, 8, 0, 0]} name="Latency (ms)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -235,21 +179,12 @@ export const AnalyticsPage = () => {
 
         {/* Risk Histogram Card */}
         <GlassCard className="border border-slate-200/80 bg-white p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-slate-900" />
-                Risk Score Distribution Histogram
-              </h3>
-              <p className="text-xs text-slate-500 font-sans mt-0.5">Hover bar to update top placeholder value</p>
-            </div>
-
-            {/* TOP RISK HISTOGRAM STATIC READOUT PLACEHOLDER */}
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-xs border border-slate-800">
-              <span>RANGE: <strong className="text-white">{activeRisk.range}</strong></span>
-              <span className="text-slate-700">|</span>
-              <span>COUNT: <strong className="text-white">{activeRisk.count?.toLocaleString()}</strong></span>
-            </div>
+          <div className="mb-4">
+            <h3 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-slate-900" />
+              Risk Score Distribution Histogram
+            </h3>
+            <p className="text-xs text-slate-500 font-sans mt-0.5">Request grouping by calculated AI threat score</p>
           </div>
 
           <div className="h-64">
@@ -257,17 +192,13 @@ export const AnalyticsPage = () => {
               <BarChart
                 data={RISK_SCORE_DISTRIBUTION}
                 margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-                onMouseMove={(state) => {
-                  if (state && state.activePayload && state.activePayload.length > 0) {
-                    setHoveredRisk(state.activePayload[0].payload);
-                  }
-                }}
-                onMouseLeave={() => setHoveredRisk(null)}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                 <XAxis dataKey="range" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
                 <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip wrapperStyle={{ display: 'none' }} />
+                <Tooltip
+                  contentStyle={{ background: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#FFFFFF' }}
+                />
                 <Bar dataKey="count" fill="#334155" radius={[8, 8, 0, 0]} name="Request Count" />
               </BarChart>
             </ResponsiveContainer>

@@ -6,6 +6,7 @@ import {
   ShieldAlert,
   Sliders,
   FileText,
+  UploadCloud,
   BarChart3,
   Zap,
   Settings,
@@ -26,6 +27,7 @@ export const Sidebar = () => {
     { id: 'threats', label: 'THREAT DETECTION', icon: ShieldAlert },
     { id: 'policies', label: 'POLICY ENGINE', icon: Sliders },
     { id: 'audit', label: 'AUDIT LOGS', icon: FileText },
+    { id: 'upload', label: 'UPLOAD LOGS', icon: UploadCloud },
     { id: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
     { id: 'simulation', label: 'ATTACK SIMULATION', icon: Zap, highlight: true },
     { id: 'settings', label: 'SETTINGS', icon: Settings }

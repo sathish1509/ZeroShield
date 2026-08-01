@@ -13,13 +13,10 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   BarChart,
   Bar
 } from 'recharts';
-import { HOURLY_REQUEST_DATA, THREAT_DISTRIBUTION_DATA, RISK_SCORE_DISTRIBUTION } from '../mock/mockData';
+import { HOURLY_REQUEST_DATA, RISK_SCORE_DISTRIBUTION } from '../mock/mockData';
 
 export const DashboardPage = () => {
   const { stats, isSimulating } = useSecurity();
@@ -67,7 +64,7 @@ export const DashboardPage = () => {
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
             <div className="flex items-center gap-2 text-slate-600">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-4 h-4 text-slate-900" />
               <span>mTLS Gateway Node: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-800">node-proxy-ap-south-1</code></span>
             </div>
             <button className="text-xs text-slate-900 font-bold uppercase hover:underline cursor-pointer">
@@ -167,7 +164,7 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Bottom Analytics Section */}
+      {/* Bottom Analytics Section (Monochrome Dark Navy & Slate Theme) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <GlassCard className="border border-slate-200/80 bg-white p-5">
           <h3 className="text-xs font-bold font-sans text-slate-900 uppercase tracking-wider mb-3">Request Trend (24h)</h3>
@@ -175,15 +172,15 @@ export const DashboardPage = () => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={HOURLY_REQUEST_DATA}>
                 <defs>
-                  <linearGradient id="colorReqBlack" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.3}/>
+                  <linearGradient id="colorReqMonoDark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.35}/>
                     <stop offset="95%" stopColor="#0F172A" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="time" stroke="#94A3B8" fontSize={10} tickLine={false} />
                 <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} hide />
-                <Tooltip contentStyle={{ background: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '12px', fontSize: '11px', color: '#0F172A' }} />
-                <Area type="monotone" dataKey="total" stroke="#0F172A" strokeWidth={2} fillOpacity={1} fill="url(#colorReqBlack)" />
+                <Tooltip contentStyle={{ background: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#FFFFFF' }} />
+                <Area type="monotone" dataKey="total" stroke="#0F172A" strokeWidth={2} fillOpacity={1} fill="url(#colorReqMonoDark)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -198,7 +195,7 @@ export const DashboardPage = () => {
               <BarChart data={RISK_SCORE_DISTRIBUTION}>
                 <XAxis dataKey="range" stroke="#94A3B8" fontSize={9} tickLine={false} />
                 <YAxis stroke="#94A3B8" fontSize={10} hide />
-                <Tooltip contentStyle={{ background: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '12px', fontSize: '11px', color: '#0F172A' }} />
+                <Tooltip contentStyle={{ background: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#FFFFFF' }} />
                 <Bar dataKey="count" fill="#334155" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -211,15 +208,15 @@ export const DashboardPage = () => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={HOURLY_REQUEST_DATA}>
                 <defs>
-                  <linearGradient id="colorLatBlack" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.3}/>
+                  <linearGradient id="colorLatMonoDark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0F172A" stopOpacity={0.35}/>
                     <stop offset="95%" stopColor="#0F172A" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="time" stroke="#94A3B8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={10} hide />
-                <Tooltip contentStyle={{ background: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '12px', fontSize: '11px', color: '#0F172A' }} />
-                <Area type="monotone" dataKey="latency" stroke="#0F172A" strokeWidth={2} fillOpacity={1} fill="url(#colorLatBlack)" />
+                <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} hide />
+                <Tooltip contentStyle={{ background: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#FFFFFF' }} />
+                <Area type="monotone" dataKey="latency" stroke="#0F172A" strokeWidth={2} fillOpacity={1} fill="url(#colorLatMonoDark)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

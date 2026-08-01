@@ -13,6 +13,7 @@ import { ServiceTopologyPage } from './pages/ServiceTopologyPage';
 import { ThreatDetectionPage } from './pages/ThreatDetectionPage';
 import { PolicyEnginePage } from './pages/PolicyEnginePage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { UploadLogsPage } from './pages/UploadLogsPage';
 import { AttackSimulationPage } from './pages/AttackSimulationPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -57,7 +58,6 @@ const AccessDeniedView = ({ pageId }) => {
           </div>
         </div>
 
-        {/* Static Administrator Access Required Notice */}
         <div className="pt-2">
           <div className="p-3.5 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 max-w-md mx-auto shadow-md">
             <Lock className="w-4 h-4 text-emerald-400" />
@@ -96,6 +96,8 @@ const MainContent = () => {
         return <PolicyEnginePage />;
       case 'audit':
         return <AuditLogsPage />;
+      case 'upload':
+        return <UploadLogsPage />;
       case 'simulation':
         return <AttackSimulationPage />;
       case 'analytics':
