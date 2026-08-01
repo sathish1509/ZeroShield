@@ -30,6 +30,9 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  SUPABASE_URL: z.string().default('http://127.0.0.1:54321'),
+  SUPABASE_ANON_KEY: z.string().default('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.anon-key-placeholder'),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().default('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.service-role-key-placeholder'),
 });
 
 export const env = envSchema.parse(process.env);

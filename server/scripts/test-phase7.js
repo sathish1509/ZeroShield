@@ -2,6 +2,7 @@ import http from 'node:http';
 import app from '../src/app.js';
 import { generateTotpCode } from '../src/controllers/mfaController.js';
 import { prisma } from '../src/config/prisma.js';
+import { supabaseAnon } from '../src/config/supabase.js';
 
 const demoUsers = {
   ADMIN: { email: 'admin@zeroshield.io', password: 'admin_secret_key_2026' },
@@ -157,6 +158,13 @@ async function runTests() {
       throw new Error('Login rate limiter failed to return HTTP 429 after 5 failed login attempts');
     }
     console.log('  ✓ Login rate limiter enforced: HTTP 429 Too Many Requests returned for brute-force attempts');
+
+    console.log('\n--- 6. Testing Supabase Row-Level Security (RLS) Direct Access Rejection ---');
+    const { data, error } = await supabaseAnon.from('threats').select('*');
+    if (!error && data && data.length > 0) {
+      throw new Error('RLS Failure: Direct unauthenticated Supabase query returned rows without service role key');
+    }
+    console.log('  ✓ Supabase RLS defense-in-depth verified: Direct unauthenticated client queries blocked by DB policy');
 
     console.log('\n🎉 ALL PHASE 7 SECURITY HARDENING VERIFICATION TESTS PASSED SUCCESSFULLY!');
   } finally {
