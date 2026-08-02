@@ -17,7 +17,14 @@ app.use(helmet());
 // CORS configuration with explicit client origin whitelist
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl) or matching client origins
+      if (!origin || origin.includes('vercel.app') || origin.includes('localhost') || origin === env.CLIENT_ORIGIN) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
   })
 );

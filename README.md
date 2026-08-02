@@ -9,6 +9,14 @@
 
 ---
 
+## 🌐 Live Production Deployments
+
+- 🚀 **Live Frontend Web Application (Vercel)**: [https://zero-shield-iota.vercel.app/](https://zero-shield-iota.vercel.app/)
+- 🛡️ **Live Express Backend API Engine (Render)**: [https://zeroshield-backend-4px0.onrender.com/](https://zeroshield-backend-4px0.onrender.com/)
+- 💚 **Backend API Health Check Endpoint**: [https://zeroshield-backend-4px0.onrender.com/api/health](https://zeroshield-backend-4px0.onrender.com/api/health)
+
+---
+
 ## ✨ Features & Functional Highlights
 
 - 🎨 **Sovereign Security Light UI**: Clean, modern UI inspired by sovereign identity vaults and high-contrast dark hero accent cards.
