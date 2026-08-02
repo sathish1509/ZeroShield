@@ -28,6 +28,15 @@ app.use('/api', globalRateLimiter);
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'success',
+    message: 'ZeroShield Zero-Trust Security API Gateway is Live & Running!',
+    healthCheck: '/api/health',
+    version: 'v3.4'
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'success',
