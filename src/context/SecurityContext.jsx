@@ -35,15 +35,25 @@ export const SecurityProvider = ({ children }) => {
     localStorage.setItem('zeroshield_role', currentRole);
   }, [isAuthenticated, currentPage, currentRole]);
   
+  // Log Source Tracker (Static Baseline vs Ingested Custom Logs)
+  const [logSource, setLogSource] = useState({
+    isCustom: false,
+    name: 'Static Baseline Data',
+    recordCount: 1420500,
+    uploadTime: null
+  });
+
   // Real-time Telemetry State
-  const [stats, setStats] = useState({
+  const INITIAL_STATS = {
     totalRequests: 1420500,
     allowedRequests: 1378000,
     blockedRequests: 42500,
     activeServices: 8,
     threatLevel: 'Elevated', // 'Low', 'Elevated', 'High', 'CRITICAL'
     avgLatency: 8.4
-  });
+  };
+
+  const [stats, setStats] = useState(INITIAL_STATS);
 
   const [services, setServices] = useState(INITIAL_SERVICES);
   const [alerts, setAlerts] = useState(INITIAL_ALERTS);
@@ -56,6 +66,20 @@ export const SecurityProvider = ({ children }) => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationLog, setSimulationLog] = useState([]);
 
+  // Gemini AI Modal State
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [selectedAlertForAi, setSelectedAlertForAi] = useState(null);
+
+  const openAiModal = (alertData = null) => {
+    setSelectedAlertForAi(alertData);
+    setIsAiModalOpen(true);
+  };
+
+  const closeAiModal = () => {
+    setIsAiModalOpen(false);
+    setSelectedAlertForAi(null);
+  };
+
   // Toast notifications
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -66,11 +90,213 @@ export const SecurityProvider = ({ children }) => {
     }, 4000);
   };
 
-  // Real-time Traffic Simulator (background activity)
+  // Log Parser & Custom Log Ingestion Engine
+  const ingestCustomLogs = (logInput, sourceName = 'Uploaded Log Stream') => {
+    try {
+      let rawEntries = [];
+
+      // 1. Try parsing if logInput is JSON
+      if (typeof logInput === 'string') {
+        const trimmed = logInput.trim();
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+          try {
+            const parsedJson = JSON.parse(trimmed);
+            rawEntries = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
+          } catch (e) {
+            // Split by lines if JSON.parse fails
+            rawEntries = trimmed.split('\n').filter(Boolean);
+          }
+        } else {
+          rawEntries = trimmed.split('\n').filter(Boolean);
+        }
+      } else if (Array.isArray(logInput)) {
+        rawEntries = logInput;
+      }
+
+      if (rawEntries.length === 0) {
+        showToast('No valid log records found in the provided input.', 'warning');
+        return false;
+      }
+
+      // 2. Extract structured log objects
+      let totalLatencySum = 0;
+      let latencyCount = 0;
+      const parsedTraffic = [];
+      const parsedAlerts = [];
+      const parsedAudit = [];
+
+      const targetServices = [
+        'Order Processing Service',
+        'Payment Gateway Service',
+        'Inventory & Stock Service',
+        'Edge API Gateway',
+        'Notification & SMS Engine',
+        'Encrypted Core DB Cluster'
+      ];
+
+      rawEntries.forEach((entry, index) => {
+        let timestamp = new Date().toTimeString().split(' ')[0];
+        let ip = '192.168.1.100';
+        let method = 'GET';
+        let endpoint = '/api/v1/resource';
+        let destination = targetServices[index % targetServices.length];
+        let isThreat = false;
+        let threatType = 'Security Anomaly';
+        let reason = 'Inspection anomaly detected';
+        let riskScore = 15;
+        let latencyVal = 8.0;
+
+        if (typeof entry === 'object' && entry !== null) {
+          timestamp = entry.timestamp || entry.time || timestamp;
+          ip = entry.ip || entry.source || entry.client_ip || ip;
+          method = (entry.method || method).toUpperCase();
+          endpoint = entry.endpoint || entry.path || entry.url || endpoint;
+          destination = entry.destination || entry.service || destination;
+          
+          if (entry.status && (parseInt(entry.status) >= 400 || entry.status === 'Blocked')) {
+            isThreat = true;
+          }
+          if (entry.threat || entry.reason || entry.riskScore > 50) {
+            isThreat = true;
+            threatType = entry.threat || entry.type || threatType;
+            reason = entry.reason || reason;
+          }
+          riskScore = entry.riskScore || (isThreat ? Math.floor(Math.random() * 30 + 70) : Math.floor(Math.random() * 20));
+          latencyVal = parseFloat(entry.latency || 8.4);
+        } else if (typeof entry === 'string') {
+          // Text line parsing
+          const ipMatch = entry.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
+          if (ipMatch) ip = ipMatch[0];
+
+          const methodMatch = entry.match(/\b(GET|POST|PUT|DELETE|PATCH|OPTIONS)\b/i);
+          if (methodMatch) method = methodMatch[0].toUpperCase();
+
+          const epMatch = entry.match(/\/api\/[^\s"]+/);
+          if (epMatch) endpoint = epMatch[0];
+
+          const latMatch = entry.match(/(\d+(\.\d+)?)\s*ms/);
+          if (latMatch) latencyVal = parseFloat(latMatch[1]);
+
+          if (/blocked|error|critical|sqli|jwt|injection|401|403|500|invalid/i.test(entry)) {
+            isThreat = true;
+            if (/sqli|select|union/i.test(entry)) threatType = 'SQL Injection Attempt';
+            else if (/jwt|token|expired/i.test(entry)) threatType = 'Expired JWT Token Replay';
+            else if (/geo|country|location/i.test(entry)) threatType = 'Geo Policy Violation';
+            else if (/rate|burst|limit/i.test(entry)) threatType = 'Rate Limit Exceeded';
+            reason = `Ingested log event: ${entry.substring(0, 60)}...`;
+            riskScore = Math.floor(Math.random() * 25 + 75);
+          }
+        }
+
+        totalLatencySum += latencyVal;
+        latencyCount++;
+
+        const decision = isThreat ? 'Blocked' : 'Allowed';
+
+        // Add to traffic
+        const trafficItem = {
+          id: `cust-tr-${Date.now()}-${index}`,
+          timestamp,
+          source: ip,
+          destination,
+          method,
+          endpoint,
+          jwtStatus: isThreat ? 'Invalid / Violation' : 'Valid (RS256)',
+          riskScore,
+          latency: `${latencyVal.toFixed(1)}ms`,
+          decision
+        };
+        parsedTraffic.push(trafficItem);
+
+        // Add to alerts if threat
+        if (isThreat) {
+          const alertItem = {
+            id: `cust-alt-${Date.now()}-${index}`,
+            time: timestamp,
+            type: threatType,
+            service: destination,
+            severity: riskScore > 85 ? 'critical' : 'high',
+            reason,
+            ip,
+            status: 'Blocked'
+          };
+          parsedAlerts.push(alertItem);
+        }
+
+        // Add to audit logs
+        parsedAudit.push({
+          id: `cust-aud-${Date.now()}-${index}`,
+          timestamp: `2026-08-02 ${timestamp}`,
+          source: ip,
+          destination,
+          endpoint,
+          decision,
+          reason: isThreat ? reason : 'Passed Policy & JWT Verification',
+          latency: `${latencyVal.toFixed(1)}ms`,
+          riskScore
+        });
+      });
+
+      const allowedCount = parsedTraffic.filter(t => t.decision === 'Allowed').length;
+      const blockedCount = parsedTraffic.filter(t => t.decision === 'Blocked').length;
+      const avgLatencyVal = latencyCount > 0 ? (totalLatencySum / latencyCount).toFixed(1) : 8.4;
+      const calculatedThreatLevel = blockedCount > (rawEntries.length * 0.25) ? 'CRITICAL' : blockedCount > 0 ? 'High' : 'Low';
+
+      const logTime = new Date().toLocaleTimeString();
+
+      setLogSource({
+        isCustom: true,
+        name: sourceName,
+        recordCount: rawEntries.length,
+        uploadTime: logTime
+      });
+
+      setStats({
+        totalRequests: rawEntries.length,
+        allowedRequests: allowedCount,
+        blockedRequests: blockedCount,
+        activeServices: 8,
+        threatLevel: calculatedThreatLevel,
+        avgLatency: parseFloat(avgLatencyVal)
+      });
+
+      setTraffic(parsedTraffic.slice(0, 50));
+      if (parsedAlerts.length > 0) {
+        setAlerts(parsedAlerts);
+      }
+      setAuditLogs(parsedAudit.slice(0, 50));
+
+      showToast(`Successfully ingested ${rawEntries.length} custom log records from "${sourceName}"!`, 'success');
+      return true;
+    } catch (err) {
+      console.error('Error ingesting logs:', err);
+      showToast('Failed to parse log content. Please check the log format.', 'error');
+      return false;
+    }
+  };
+
+  // Reset to Initial Static Baseline Data
+  const resetToStaticBaseline = () => {
+    setLogSource({
+      isCustom: false,
+      name: 'Static Baseline Data',
+      recordCount: 1420500,
+      uploadTime: null
+    });
+    setStats(INITIAL_STATS);
+    setServices(INITIAL_SERVICES);
+    setAlerts(INITIAL_ALERTS);
+    setTraffic(INITIAL_TRAFFIC);
+    setAuditLogs(INITIAL_AUDIT_LOGS);
+    showToast('Reset telemetry to initial static baseline data.', 'info');
+  };
+
+  // Traffic Generator ONLY runs during explicit attack simulation mode
   useEffect(() => {
+    if (!isSimulating) return; // Keep static when not simulating
+
     const interval = setInterval(() => {
-      // Simulate live incoming traffic
-      const isThreat = Math.random() < (activeSimulation ? 0.8 : 0.08);
+      const isThreat = Math.random() < 0.75;
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0];
       
@@ -109,7 +335,7 @@ export const SecurityProvider = ({ children }) => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [activeSimulation]);
+  }, [isSimulating]);
 
   // Attack Trigger Handler
   const triggerAttack = (attackType) => {
@@ -280,6 +506,9 @@ export const SecurityProvider = ({ children }) => {
       searchQuery,
       setSearchQuery,
       stats,
+      logSource,
+      ingestCustomLogs,
+      resetToStaticBaseline,
       services,
       alerts,
       policies,
@@ -289,6 +518,10 @@ export const SecurityProvider = ({ children }) => {
       isSimulating,
       triggerAttack,
       stopSimulation,
+      isAiModalOpen,
+      selectedAlertForAi,
+      openAiModal,
+      closeAiModal,
       togglePolicy,
       login,
       logout,

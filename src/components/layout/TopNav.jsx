@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { Shield, Search, Bell, RefreshCw, AlertTriangle, LogOut, User } from 'lucide-react';
+import { Shield, Search, RefreshCw, LogOut, Sparkles } from 'lucide-react';
 import { useSecurity } from '../../context/SecurityContext';
 
 export const TopNav = () => {
-  const { searchQuery, setSearchQuery, alerts, logout, currentRole, ROLES } = useSecurity();
-  const [showNotifications, setShowNotifications] = useState(false);
+  const { searchQuery, setSearchQuery, logout, currentRole, ROLES, openAiModal } = useSecurity();
 
   const rolePills = [
     { id: 'ADMIN', label: 'SOC ADMIN' },
@@ -49,8 +47,18 @@ export const TopNav = () => {
         </kbd>
       </div>
 
-      {/* 3. Right Action Controls & User Profile (Aligned Horizontal Row) */}
+      {/* 3. Right Action Controls & User Profile */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* Gemini AI Threat Analyst Button */}
+        <button
+          onClick={() => openAiModal()}
+          className="px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800 text-xs font-mono font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
+          title="Open Gemini AI Security Analyst"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+          <span className="hidden sm:inline">Gemini AI Analyst</span>
+        </button>
+
         {/* Static Role Status Indicator Pill */}
         <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-full text-[11px] font-bold font-mono border border-slate-200 select-none">
           {rolePills.map((role) => (
@@ -73,51 +81,6 @@ export const TopNav = () => {
         >
           <RefreshCw className="w-4.5 h-4.5" />
         </button>
-
-        {/* Notifications Icon with Drawer */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            title="View Security Alerts"
-            className="p-2 rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 relative transition-all cursor-pointer"
-          >
-            <Bell className="w-4.5 h-4.5" />
-            {alerts.length > 0 && (
-              <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-rose-500 text-white font-mono text-[9px] font-bold rounded-full flex items-center justify-center shadow-xs">
-                {alerts.length}
-              </span>
-            )}
-          </button>
-
-          {/* Notifications Dropdown Drawer */}
-          {showNotifications && (
-            <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 animate-in fade-in">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-900">Security Alerts ({alerts.length})</span>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-xs text-slate-500 hover:text-slate-900 font-mono font-bold cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {alerts.slice(0, 5).map((alt) => (
-                  <div key={alt.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-bold text-slate-900">{alt.type}</span>
-                        <span className="text-[10px] font-mono text-slate-400">{alt.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">{alt.service}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Vertical Divider */}
         <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />

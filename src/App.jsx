@@ -18,6 +18,7 @@ import { UploadLogsPage } from './pages/UploadLogsPage';
 import { AttackSimulationPage } from './pages/AttackSimulationPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { GeminiAiModal } from './components/common/GeminiAiModal';
 
 const AccessDeniedView = ({ pageId }) => {
   const { currentRole, ROLES, switchRole } = useSecurity();
@@ -71,7 +72,7 @@ const AccessDeniedView = ({ pageId }) => {
 };
 
 const MainContent = () => {
-  const { isAuthenticated, currentPage, checkPageAccess } = useSecurity();
+  const { isAuthenticated, currentPage, checkPageAccess, isAiModalOpen, closeAiModal, selectedAlertForAi } = useSecurity();
 
   if (!isAuthenticated || currentPage === 'login') {
     return <LoginPage />;
@@ -121,6 +122,7 @@ const MainContent = () => {
           {renderPage()}
         </main>
       </div>
+      <GeminiAiModal isOpen={isAiModalOpen} onClose={closeAiModal} alertData={selectedAlertForAi} />
       <Toast />
     </div>
   );

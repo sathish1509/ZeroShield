@@ -1,11 +1,11 @@
 import React from 'react';
 import { GlassCard } from './GlassCard';
-import { ShieldAlert, AlertOctagon, Clock, ShieldX, Globe, Zap, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, AlertOctagon, Clock, ShieldX, Globe, Zap, CheckCircle2, Sparkles } from 'lucide-react';
 import { useSecurity } from '../../context/SecurityContext';
 import { Badge } from './Badge';
 
 export const RecentAlertsCard = () => {
-  const { alerts } = useSecurity();
+  const { alerts, openAiModal } = useSecurity();
 
   const getThreatIcon = (type) => {
     if (type.includes('SQL')) return <ShieldX className="w-4 h-4 text-red-600" />;
@@ -32,15 +32,18 @@ export const RecentAlertsCard = () => {
           {alerts.slice(0, 5).map((alert) => (
             <div
               key={alert.id}
-              className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all flex items-start gap-3 group"
+              onClick={() => openAiModal(alert)}
+              className="p-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-400 transition-all flex items-start gap-3 group cursor-pointer"
+              title="Click for Gemini AI Threat Analysis & RCA"
             >
               <div className="p-2 rounded-lg bg-red-100 shrink-0 mt-0.5">
                 {getThreatIcon(alert.type)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-xs font-bold font-mono text-slate-900 truncate">
-                    {alert.type}
+                  <h4 className="text-xs font-bold font-mono text-slate-900 truncate flex items-center gap-1">
+                    <span>{alert.type}</span>
+                    <Sparkles className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </h4>
                   <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400 shrink-0">
                     <Clock className="w-3 h-3" />
@@ -51,12 +54,12 @@ export const RecentAlertsCard = () => {
                   <span className="text-slate-400">Target: </span>{alert.service}
                 </p>
                 <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-slate-500 truncate max-w-[170px]" title={alert.reason}>
+                  <span className="text-slate-500 truncate max-w-[140px]" title={alert.reason}>
                     {alert.reason}
                   </span>
-                  <Badge variant="blocked" size="sm">
-                    {alert.status}
-                  </Badge>
+                  <span className="text-emerald-700 font-bold group-hover:underline flex items-center gap-1">
+                    AI RCA →
+                  </span>
                 </div>
               </div>
             </div>

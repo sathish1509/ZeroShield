@@ -25,7 +25,7 @@ import {
 import { useSecurity } from '../context/SecurityContext';
 
 export const ZeroTrustProxyPage = () => {
-  const { showToast } = useSecurity();
+  const { showToast, logSource, resetToStaticBaseline, setCurrentPage, stats } = useSecurity();
 
   // Custom Request Simulator Inputs
   const [originService, setOriginService] = useState('Payment-Gateway-v1');
@@ -172,6 +172,11 @@ export const ZeroTrustProxyPage = () => {
             const decision = isAllowed ? 'ALLOWED' : 'BLOCKED';
             const statusCode = isAllowed ? 200 : 403;
 
+            let failReason = 'Passed Zero-Trust Identity & Policy Checks';
+            if (!jwtValid) failReason = 'Invalid or Expired JWT Signature';
+            else if (!policyPassed) failReason = 'Unauthorized Lateral Movement Access Violation';
+            else if (hasSqlPayload) failReason = 'WAF Deep Inspection: SQL Injection Anomaly Detected';
+
             const result = {
               id: `PRX-2026-${Math.floor(1000 + Math.random() * 9000)}`,
               timestamp: new Date().toLocaleTimeString(),
@@ -181,18 +186,14 @@ export const ZeroTrustProxyPage = () => {
               path: requestPath,
               jwtValid,
               policyPassed,
+              sqlClean: !hasSqlPayload,
               riskScore,
               detectedThreats,
               decision,
               statusCode,
+              reason: failReason,
               latencyMs: Math.floor(4 + Math.random() * 8),
-              reason: !jwtValid
-                ? 'JWT Credential Verification Failed'
-                : hasLateralMovement
-                ? `Unauthorized Lateral Attempt: '${originService}' lacks permission scope for '${targetService}'`
-                : hasSqlPayload
-                ? 'Malicious SQL Payload Pattern Intercepted'
-                : 'All Cryptographic & Policy Checks Passed'
+              latency: `${(Math.random() * 4 + 4).toFixed(1)}ms`
             };
 
             setExecutionResult(result);
@@ -246,11 +247,36 @@ export const ZeroTrustProxyPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              REAL-TIME PROXY EDGE ACTIVE (mTLS 1.3)
-            </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {logSource.isCustom ? (
+              <div className="flex items-center gap-2">
+                <span className="px-3.5 py-1.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  CUSTOM LOG ACTIVE ({logSource.name})
+                </span>
+                <button
+                  onClick={resetToStaticBaseline}
+                  className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-mono font-bold border border-slate-300 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset Static
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  STATIC BASELINE MODE
+                </span>
+                <button
+                  onClick={() => setCurrentPage('upload')}
+                  className="px-3 py-1.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-mono font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Upload Live Logs
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </GlassCard>

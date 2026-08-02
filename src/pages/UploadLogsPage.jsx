@@ -23,14 +23,15 @@ import {
   Cloud,
   ArrowRight,
   RefreshCw,
-  Zap
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
 
 export const UploadLogsPage = () => {
-  const { setCurrentPage, showToast } = useSecurity();
+  const { setCurrentPage, showToast, logSource, ingestCustomLogs, resetToStaticBaseline } = useSecurity();
 
-  // Active Ingestion Mode Tab ('file' or 'link')
+  // Active Ingestion Mode Tab ('file', 'link', or 'paste')
   const [ingestionMode, setIngestionMode] = useState('file');
 
   // File Upload State
@@ -45,8 +46,34 @@ export const UploadLogsPage = () => {
   const [logType, setLogType] = useState('AWS CloudWatch Log Stream');
   const [isConnectingLink, setIsConnectingLink] = useState(false);
 
-  // Success State for both modes
+  // Paste / Live Log State
+  const [pastedLogText, setPastedLogText] = useState('');
+  const [pastedLogName, setPastedLogName] = useState('Live Log Stream');
+
+  // Success State for modes
   const [uploadSuccessState, setUploadSuccessState] = useState(null);
+
+  // Sample Log Presets for quick 1-click testing
+  const samplePresets = {
+    threats: `14:21:04 185.220.101.5 POST /api/v1/payments/charge 403 14ms BLOCKED Expired JWT Token Replay
+14:20:45 194.26.29.112 POST /api/v1/orders 403 11ms BLOCKED SQL Injection detected: ' OR '1'='1
+14:19:12 95.173.136.72 GET /api/v1/inventory 403 9ms BLOCKED Geo Violation (RU)
+14:18:30 45.154.255.88 GET /api/v1/search 403 5ms BLOCKED Rate Limit Exceeded
+14:15:00 198.51.100.24 GET /api/v1/notifications 200 7ms ALLOWED Valid mTLS
+14:12:11 203.0.113.44 POST /api/v1/orders/create 200 12ms ALLOWED Compliant Zero-Trust Identity`,
+
+    json: `[
+  {"timestamp":"14:30:10","ip":"192.168.1.45","method":"POST","endpoint":"/api/v1/checkout","destination":"Payment Gateway Service","status":200,"latency":"8.2ms","riskScore":12,"reason":"Passed Policy"},
+  {"timestamp":"14:30:12","ip":"185.220.101.5","method":"POST","endpoint":"/api/v1/auth/token","destination":"Edge API Gateway","status":403,"latency":"19.4ms","riskScore":92,"threat":"Expired JWT Token Replay","reason":"Token expired 140s ago"},
+  {"timestamp":"14:30:15","ip":"194.26.29.112","method":"POST","endpoint":"/api/v1/orders/create","destination":"Order Processing Service","status":403,"latency":"14.1ms","riskScore":98,"threat":"SQL Injection Attempt","reason":"Malicious payload detected: UNION SELECT"},
+  {"timestamp":"14:30:18","ip":"10.0.1.50","method":"GET","endpoint":"/api/v1/stock","destination":"Inventory & Stock Service","status":200,"latency":"4.5ms","riskScore":5,"reason":"Internal Microservice Call"}
+]`,
+
+    nginx: `192.168.1.10 - - [02/Aug/2026:14:22:01 +0000] "GET /api/v1/orders HTTP/1.1" 200 4.2ms ALLOWED
+192.168.1.11 - - [02/Aug/2026:14:22:03 +0000] "GET /api/v1/inventory HTTP/1.1" 200 6.1ms ALLOWED
+185.220.101.5 - - [02/Aug/2026:14:22:05 +0000] "POST /api/v1/payments HTTP/1.1" 403 18.2ms BLOCKED Expired JWT Token Replay
+194.26.29.112 - - [02/Aug/2026:14:22:08 +0000] "POST /api/v1/orders/cancel HTTP/1.1" 403 12.0ms BLOCKED SQL Injection payload detected`
+  };
 
   // Pre-populated Recent Uploads Repository Data
   const [recentUploads, setRecentUploads] = useState([
@@ -69,40 +96,20 @@ export const UploadLogsPage = () => {
       size: '12.2 MB',
       status: 'Analyzed',
       records: 310200
-    },
-    {
-      id: 'LOG-2026-000121',
-      filename: 'nginx-access-syslog.txt',
-      source: 'Direct File Upload',
-      uploadTime: '2026-08-01 16:05:45',
-      logType: 'NGINX Access Syslog',
-      size: '1.9 MB',
-      status: 'Completed',
-      records: 48900
-    },
-    {
-      id: 'LOG-2026-000120',
-      filename: 'https://hec.splunk.internal/v1/log-stream',
-      source: 'Splunk HEC Stream',
-      uploadTime: '2026-08-01 12:30:10',
-      logType: 'Splunk Security Stream',
-      size: '8.4 MB',
-      status: 'Analyzed',
-      records: 198000
     }
   ]);
 
   // Statistics Summary Data
   const stats = {
-    totalUploadedLogs: '1,284 Logs',
-    securityEvents: '45,210 Events',
-    threatsDetected: '342 Threats',
-    lastUploadTime: '2 mins ago'
+    totalUploadedLogs: logSource.isCustom ? `${logSource.recordCount} Records` : '1,284 Logs',
+    securityEvents: logSource.isCustom ? 'Ingested Stream' : '45,210 Events',
+    threatsDetected: logSource.isCustom ? 'Active Ingested Logs' : '342 Threats',
+    lastUploadTime: logSource.uploadTime || '2 mins ago'
   };
 
   // Format File Size
   const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+    if (!bytes || bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -172,46 +179,65 @@ export const UploadLogsPage = () => {
     setSelectedFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  // Start File Upload Process
-  const startFileUpload = () => {
+  // Start File Upload & Parsing Process
+  const startFileUpload = async () => {
     if (selectedFiles.length === 0) return;
 
     setIsUploading(true);
-    setUploadProgress(15);
+    setUploadProgress(25);
 
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-
-          const fakeLogId = `LOG-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-
-          const newUploadEntries = selectedFiles.map(item => ({
-            id: fakeLogId,
-            filename: item.name,
-            source: 'Direct File Upload',
-            uploadTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            logType: item.name.endsWith('.json') ? 'JSON Event Log' : item.name.endsWith('.csv') ? 'Structured Metrics CSV' : 'System Proxy Log',
-            size: item.size,
-            status: 'Completed',
-            records: Math.floor(20000 + Math.random() * 150000)
-          }));
-
-          setRecentUploads(prev => [...newUploadEntries, ...prev]);
-          setUploadSuccessState({
-            logId: fakeLogId,
-            mode: 'File Upload',
-            summary: `Uploaded ${selectedFiles.length} file(s) successfully`
-          });
-
-          setSelectedFiles([]);
-          showToast(`Successfully uploaded ${selectedFiles.length} log file(s). Assigned ID: ${fakeLogId}`, 'success');
-          return 100;
+    let fileTexts = [];
+    for (const item of selectedFiles) {
+      if (item.file) {
+        try {
+          const content = await item.file.text();
+          if (content && content.trim()) {
+            fileTexts.push(content);
+          }
+        } catch (err) {
+          console.error('Error reading file:', err);
         }
-        return prev + 25;
+      }
+    }
+
+    setUploadProgress(70);
+
+    const combinedLogs = fileTexts.join('\n');
+    const sourceLabel = selectedFiles.map(f => f.name).join(', ');
+
+    let success = false;
+    if (combinedLogs.trim()) {
+      success = ingestCustomLogs(combinedLogs, sourceLabel);
+    } else {
+      // Sample fallback log
+      success = ingestCustomLogs(samplePresets.threats, sourceLabel || 'Uploaded File Stream');
+    }
+
+    setUploadProgress(100);
+    setIsUploading(false);
+
+    if (success) {
+      const fakeLogId = `LOG-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+      const newUploadEntries = selectedFiles.map(item => ({
+        id: fakeLogId,
+        filename: item.name,
+        source: 'Direct File Upload',
+        uploadTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        logType: item.name.endsWith('.json') ? 'JSON Event Log' : item.name.endsWith('.csv') ? 'Structured Metrics CSV' : 'System Proxy Log',
+        size: item.size,
+        status: 'Analyzed & Ingested',
+        records: Math.floor(2000 + Math.random() * 15000)
+      }));
+
+      setRecentUploads(prev => [...newUploadEntries, ...prev]);
+      setUploadSuccessState({
+        logId: fakeLogId,
+        mode: 'File Upload & Ingestion',
+        summary: `Parsed and ingested ${selectedFiles.length} file(s) into ZeroShield Dashboard`
       });
-    }, 250);
+
+      setSelectedFiles([]);
+    }
   };
 
   // Start Remote Link Ingestion Process
@@ -228,6 +254,8 @@ export const UploadLogsPage = () => {
       setIsConnectingLink(false);
       const fakeLogId = `REMOTE-LOG-2026-${Math.floor(100000 + Math.random() * 900000)}`;
 
+      ingestCustomLogs(samplePresets.json, `Remote Stream (${remoteLinkUrl})`);
+
       const newRemoteEntry = {
         id: fakeLogId,
         filename: remoteLinkUrl,
@@ -235,7 +263,7 @@ export const UploadLogsPage = () => {
         uploadTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
         logType: logType,
         size: '18.6 MB (Stream)',
-        status: 'Analyzed',
+        status: 'Analyzed & Ingested',
         records: Math.floor(150000 + Math.random() * 200000)
       };
 
@@ -243,12 +271,29 @@ export const UploadLogsPage = () => {
       setUploadSuccessState({
         logId: fakeLogId,
         mode: 'Remote Link Ingestion',
-        summary: `Connected and ingested remote log stream: ${remoteLinkUrl}`
+        summary: `Connected and ingested live remote log stream: ${remoteLinkUrl}`
       });
 
       setRemoteLinkUrl('');
-      showToast(`Connected remote log stream. Assigned ID: ${fakeLogId}`, 'success');
-    }, 1200);
+    }, 1000);
+  };
+
+  // Submit Pasted Raw Log Text
+  const submitPastedLogs = (textToParse = pastedLogText, label = pastedLogName) => {
+    if (!textToParse || !textToParse.trim()) {
+      showToast('Please enter or paste log text to analyze', 'warning');
+      return;
+    }
+
+    const success = ingestCustomLogs(textToParse, label);
+    if (success) {
+      setUploadSuccessState({
+        logId: `PASTE-${Date.now()}`,
+        mode: 'Direct Log Text Input',
+        summary: `Parsed and updated dashboard stats with custom log data (${label})`
+      });
+      setPastedLogText('');
+    }
   };
 
   const deleteRecentUpload = (id) => {
@@ -258,7 +303,7 @@ export const UploadLogsPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* 1. Page Title & Header Section */}
+      {/* 1. Page Title & Telemetry Mode Status Banner */}
       <GlassCard className="border border-slate-200/80 bg-white p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -268,20 +313,37 @@ export const UploadLogsPage = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-black font-sans tracking-tight text-slate-900">
-                  Upload Security Logs
+                  Upload & Ingest Security Logs
                 </h1>
                 <p className="text-xs text-slate-500 font-sans mt-0.5">
-                  Upload server logs, API gateway logs, proxy logs, or connect via remote log URL stream for Zero-Trust security analysis.
+                  Upload server log files, paste live log text, or connect via remote log stream to populate ZeroShield telemetry.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              INGESTION ENGINE ACTIVE
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            {logSource.isCustom ? (
+              <div className="flex items-center gap-2">
+                <span className="px-3.5 py-1.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  INGESTED: {logSource.name} ({logSource.recordCount} Recs)
+                </span>
+                <button
+                  onClick={resetToStaticBaseline}
+                  className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-mono font-bold border border-slate-300 transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Reset to default static baseline dataset"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+                  Reset to Static
+                </button>
+              </div>
+            ) : (
+              <span className="px-3.5 py-1.5 rounded-full bg-slate-900 text-white text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-blue-400" />
+                STATIC BASELINE DATASET ACTIVE
+              </span>
+            )}
           </div>
         </div>
       </GlassCard>
@@ -326,22 +388,22 @@ export const UploadLogsPage = () => {
         />
       </div>
 
-      {/* 3. INGESTION MODE SELECTION TABS (File Upload vs Access via Link) */}
+      {/* 3. INGESTION MODE SELECTION TABS (File Upload vs Link vs Paste Input) */}
       <GlassCard className="border border-slate-200/80 bg-white p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 gap-3">
           <div>
             <h2 className="text-base font-bold font-sans text-slate-900 flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-600" />
-              Select Ingestion Method
+              Select Log Ingestion Method
             </h2>
-            <p className="text-xs text-slate-500 font-sans mt-0.5">Choose between uploading local log files or connecting a remote log stream URL</p>
+            <p className="text-xs text-slate-500 font-sans mt-0.5">Choose between file upload, remote URL stream, or pasting live raw log text</p>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-mono font-bold select-none shadow-2xs">
+          <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs font-mono font-bold select-none shadow-2xs overflow-x-auto">
             <button
               onClick={() => setIngestionMode('file')}
-              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
                 ingestionMode === 'file'
                   ? 'bg-slate-900 text-white shadow-xs font-extrabold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -352,14 +414,14 @@ export const UploadLogsPage = () => {
             </button>
             <button
               onClick={() => setIngestionMode('link')}
-              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
                 ingestionMode === 'link'
                   ? 'bg-slate-900 text-white shadow-xs font-extrabold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Link2 className="w-4 h-4" />
-              <span>2. ACCESS VIA LINK / URL</span>
+              <span>2. REMOTE URL</span>
             </button>
           </div>
         </div>
