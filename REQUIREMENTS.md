@@ -1,7 +1,7 @@
 # 📋 ZeroShield System & Package Requirements
 
 ### System Runtimes
-- **Node.js**: `>= 18.0.0`
+- **Node.js**: `>= 20.0.0`
 - **npm**: `>= 9.0.0`
 
 ### Core Application Dependencies (Frontend)
